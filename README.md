@@ -1,3 +1,4 @@
+<<<<<<< HEAD
 # Millet Jar Website
 
 Storefront for **Millet Jar** (www.milletjar.in) — Next.js 16 (App Router), TypeScript, Tailwind CSS v4.
@@ -191,3 +192,7 @@ Highlights:
 - `NEXT_PUBLIC_WHATSAPP_NUMBER` still uses the placeholder `919999999999` until the real business number is supplied.
 - Google login requires real OAuth credentials; the button is shown but returns a clear error until they are set.
 - The `checkout` page from the previous version was removed in favour of `/cart` → `/booking` → `/payment`.
+=======
+# milletjar-web
+>>>>>>> 33c8ed3671dbcefa928de5cfd7faa44a15e38915
+"# milletjar-web" 
