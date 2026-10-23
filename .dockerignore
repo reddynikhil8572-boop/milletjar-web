@@ -1,0 +1,14 @@
+node_modules
+.next
+.data
+.git
+.env
+.env.local
+.env.*.local
+npm-debug.log*
+README.md
+SECURITY.md
+Dockerfile
+.dockerignore
+scripts/smoke-test.mjs
+scripts/prod-check.mjs

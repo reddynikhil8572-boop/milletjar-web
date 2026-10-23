@@ -1,0 +1,49 @@
+services:
+  - type: web
+    name: milletjar-web
+    runtime: node
+    plan: free
+    buildCommand: npm ci && npm run build
+    startCommand: npm run start
+    healthCheckPath: /api/health
+    envVars:
+      - key: NODE_ENV
+        value: production
+      # Public origin, e.g. https://www.milletjar.in
+      - key: APP_URL
+        sync: false
+      - key: NEXT_PUBLIC_WHATSAPP_NUMBER
+        sync: false
+      - key: NEXT_PUBLIC_CONTACT_EMAIL
+        sync: false
+      # Customer auth
+      - key: GOOGLE_CLIENT_ID
+        sync: false
+      - key: GOOGLE_CLIENT_SECRET
+        sync: false
+      - key: AUTH_SECRET
+        generateValue: true
+      # Admin auth (must differ from AUTH_SECRET)
+      - key: ADMIN_EMAIL
+        sync: false
+      - key: ADMIN_PASSWORD_HASH
+        sync: false
+      - key: ADMIN_AUTH_SECRET
+        generateValue: true
+      # Payments (optional)
+      - key: PAYMENT_PROVIDER
+        value: razorpay
+      - key: PAYMENT_KEY_ID
+        sync: false
+      - key: PAYMENT_KEY_SECRET
+        sync: false
+      - key: PAYMENT_WEBHOOK_SECRET
+        sync: false
+      # Uncomment together with the disk block below to keep data across deploys.
+      # - key: DATA_DIR
+      #   value: /var/data
+    # Persistent disk: requires a paid instance type.
+    # disk:
+    #   name: milletjar-data
+    #   mountPath: /var/data
+    #   sizeGB: 1
