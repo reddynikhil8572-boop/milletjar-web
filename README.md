@@ -1,4 +1,3 @@
-<<<<<<< HEAD
 # Millet Jar Website
 
 Storefront for **Millet Jar** (www.milletjar.in) — Next.js 16 (App Router), TypeScript, Tailwind CSS v4.
@@ -137,6 +136,8 @@ npm run build
 | `ADMIN_EMAIL` | For admin | Admin account email |
 | `ADMIN_PASSWORD_HASH` | Production admin | scrypt hash from `npm run hash:password` |
 | `ADMIN_PASSWORD` | Dev only | Plain admin password, ignored when `NODE_ENV=production` |
+| `SUPABASE_URL` | Supabase data store | e.g. `https://<project-ref>.supabase.co`; unset = local file store |
+| `SUPABASE_SERVICE_ROLE_KEY` | Supabase data store | service_role key from Project Settings → API; run `supabase/schema.sql` first, then `npm run migrate:supabase` |
 | `PAYMENT_PROVIDER` | No | Defaults to `razorpay` |
 | `PAYMENT_KEY_ID` / `PAYMENT_KEY_SECRET` | For online pay | Razorpay API keys |
 | `PAYMENT_WEBHOOK_SECRET` | For online pay | Razorpay webhook signing secret |
@@ -146,9 +147,30 @@ Generate secrets with `openssl rand -base64 48`.
 
 ## Data storage
 
-Users, sessions, orders and audit events are stored in a JSON file at `${DATA_DIR}/db.json` (default `./.data/db.json`). This keeps deployment dependency-free.
+The store has two modes behind one interface (`lib/store.ts`):
 
-**Important:** Render/Railway container filesystems are ephemeral. Without a mounted disk, accounts, sessions and orders are lost on redeploy/restart. Mount a persistent volume and set `DATA_DIR` to it. The store layer (`lib/store.ts`) is intentionally small so it can be replaced with Postgres/Redis.
+- **Supabase (production)** — used automatically when `SUPABASE_URL` and `SUPABASE_SERVICE_ROLE_KEY` are set. All data (users, password hashes, sessions, orders, saved addresses, audit events) lives in Postgres over the HTTPS data API, so it survives redeploys with no volume needed.
+- **Local JSON file (development fallback)** — `${DATA_DIR}/db.json` (default `./.data/db.json`) when Supabase is not configured. Zero-setup local development.
+
+### Supabase setup
+
+1. In the Supabase dashboard open **SQL Editor → New query**, paste the contents of [`supabase/schema.sql`](./supabase/schema.sql) and run it (creates all tables, RLS, and the atomic write function).
+2. In `.env.local` set:
+
+```env
+SUPABASE_URL=https://<project-ref>.supabase.co
+SUPABASE_SERVICE_ROLE_KEY=<service_role key>   # Project Settings → API
+```
+
+3. If you already have local data, copy it over once:
+
+```bash
+npm run migrate:supabase
+```
+
+The `service_role` key is server-only — never expose it with a `NEXT_PUBLIC_` prefix. RLS is enabled on every table with no policies, so the anon/authenticated keys can read nothing.
+
+**Without Supabase (file mode):** Render/Railway container filesystems are ephemeral. Without a mounted disk, accounts, sessions and orders are lost on redeploy/restart. Mount a persistent volume and set `DATA_DIR` to it.
 
 For multiple instances you must also move rate limiting and sessions to shared storage (e.g. Redis); the in-memory limiter is per instance.
 
@@ -192,7 +214,3 @@ Highlights:
 - `NEXT_PUBLIC_WHATSAPP_NUMBER` still uses the placeholder `919999999999` until the real business number is supplied.
 - Google login requires real OAuth credentials; the button is shown but returns a clear error until they are set.
 - The `checkout` page from the previous version was removed in favour of `/cart` → `/booking` → `/payment`.
-=======
-# milletjar-web
->>>>>>> 33c8ed3671dbcefa928de5cfd7faa44a15e38915
-"# milletjar-web" 

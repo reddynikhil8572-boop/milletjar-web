@@ -3,6 +3,7 @@ import Link from "next/link";
 import { SITE } from "@/lib/config";
 import { products } from "@/lib/products";
 import AddToCart from "@/components/add-to-cart";
+import Reveal from "@/components/reveal";
 
 const steps = [
   {
@@ -31,7 +32,7 @@ export default function Home() {
         />
         <div className="mx-auto max-w-7xl px-4 py-14 sm:px-6 md:py-20 lg:px-8">
           <div className="grid items-center gap-12 md:grid-cols-2">
-            <div>
+            <Reveal>
               <span className="inline-flex items-center gap-2 rounded-full border border-mj-beige bg-white px-3 py-1 text-xs font-medium text-mj-green">
                 <span className="h-1.5 w-1.5 rounded-full bg-mj-orange" />
                 Fresh from Farm to Your Family
@@ -52,13 +53,13 @@ export default function Home() {
               <div className="mt-7 flex flex-wrap items-center gap-3">
                 <Link
                   href="/products"
-                  className="rounded-full bg-mj-green px-6 py-3 text-sm font-medium text-white shadow-sm transition-colors hover:bg-mj-green-700"
+                  className="mj-press rounded-full bg-mj-green px-6 py-3 text-sm font-medium text-white shadow-sm hover:bg-mj-green-700"
                 >
                   Shop millets
                 </Link>
                 <Link
                   href="/cart"
-                  className="rounded-full border border-mj-green/30 px-6 py-3 text-sm font-medium text-mj-green transition-colors hover:bg-mj-cream"
+                  className="mj-press rounded-full border border-mj-green/30 px-6 py-3 text-sm font-medium text-mj-green hover:bg-mj-cream"
                 >
                   View cart
                 </Link>
@@ -78,9 +79,9 @@ export default function Home() {
                   <dd className="text-sm font-semibold text-mj-ink">On WhatsApp</dd>
                 </div>
               </dl>
-            </div>
+            </Reveal>
 
-            <div className="relative">
+            <Reveal delay={120} className="relative">
               <div className="relative aspect-[4/3] w-full overflow-hidden rounded-3xl shadow-xl ring-1 ring-mj-beige">
                 <Image
                   src="/images/WhatsApp Image 2026-10-22 at 5.17.25 PM (2).jpeg"
@@ -106,13 +107,13 @@ export default function Home() {
                   </span>
                 </div>
               </div>
-            </div>
+            </Reveal>
           </div>
         </div>
       </section>
 
       <section className="mx-auto max-w-7xl px-4 py-14 sm:px-6 lg:px-8">
-        <div className="flex flex-wrap items-end justify-between gap-3">
+        <Reveal className="flex flex-wrap items-end justify-between gap-3">
           <div>
             <h2 className="text-2xl font-semibold text-mj-ink md:text-3xl">
               Popular picks
@@ -127,14 +128,12 @@ export default function Home() {
           >
             View all products →
           </Link>
-        </div>
+        </Reveal>
 
         <div className="mt-7 grid grid-cols-1 gap-6 sm:grid-cols-2 lg:grid-cols-3">
-          {featured.map((product) => (
-            <article
-              key={product.id}
-              className="group flex flex-col overflow-hidden rounded-2xl bg-white shadow-sm ring-1 ring-mj-beige transition-shadow hover:shadow-md"
-            >
+          {featured.map((product, index) => (
+            <Reveal key={product.id} delay={index * 80}>
+              <article className="group flex h-full flex-col overflow-hidden rounded-2xl bg-white shadow-sm ring-1 ring-mj-beige transition-shadow hover:shadow-md">
               <Link
                 href="/products"
                 className="relative block aspect-square overflow-hidden"
@@ -163,7 +162,8 @@ export default function Home() {
                   <AddToCart productId={product.id} />
                 </div>
               </div>
-            </article>
+              </article>
+            </Reveal>
           ))}
         </div>
       </section>
@@ -175,10 +175,8 @@ export default function Home() {
           </h2>
           <div className="mt-8 grid gap-6 md:grid-cols-3">
             {steps.map((step, index) => (
-              <div
-                key={step.title}
-                className="rounded-2xl border border-mj-beige bg-white p-6"
-              >
+              <Reveal key={step.title} delay={index * 90}>
+                <div className="h-full rounded-2xl border border-mj-beige bg-white p-6">
                 <span className="flex h-9 w-9 items-center justify-center rounded-full bg-mj-green/10 text-sm font-semibold text-mj-green">
                   {index + 1}
                 </span>
@@ -188,14 +186,15 @@ export default function Home() {
                 <p className="mt-1.5 text-sm leading-relaxed text-mj-brown">
                   {step.body}
                 </p>
-              </div>
+                </div>
+              </Reveal>
             ))}
           </div>
         </div>
       </section>
 
       <section className="mx-auto max-w-7xl px-4 py-14 sm:px-6 lg:px-8">
-        <div className="overflow-hidden rounded-3xl bg-mj-green px-6 py-10 text-white sm:px-10">
+        <Reveal className="overflow-hidden rounded-3xl bg-mj-green px-6 py-10 text-white sm:px-10">
           <div className="grid items-center gap-6 md:grid-cols-2">
             <div>
               <h2 className="text-2xl font-semibold md:text-3xl">
@@ -209,7 +208,7 @@ export default function Home() {
             <div className="flex flex-wrap gap-3 md:justify-end">
               <Link
                 href="/contact"
-                className="rounded-full bg-white px-6 py-3 text-sm font-medium text-mj-green transition-colors hover:bg-mj-cream"
+                className="mj-press rounded-full bg-white px-6 py-3 text-sm font-medium text-mj-green hover:bg-mj-cream"
               >
                 Talk to us
               </Link>
@@ -217,13 +216,13 @@ export default function Home() {
                 href={`https://www.instagram.com/${SITE.instagram.replace("@", "")}`}
                 target="_blank"
                 rel="noopener noreferrer"
-                className="rounded-full border border-white/40 px-6 py-3 text-sm font-medium text-white transition-colors hover:bg-white/10"
+                className="mj-press rounded-full border border-white/40 px-6 py-3 text-sm font-medium text-white hover:bg-white/10"
               >
                 {SITE.instagram}
               </a>
             </div>
           </div>
-        </div>
+        </Reveal>
       </section>
     </div>
   );

@@ -1,5 +1,6 @@
 import Link from "next/link";
 import { SITE, CONTACT } from "@/lib/config";
+import Reveal from "@/components/reveal";
 
 export const metadata = {
   title: "Contact | Millet Jar",
@@ -21,20 +22,23 @@ export default function ContactPage() {
         <span className="text-mj-ink">Contact</span>
       </nav>
 
-      <h1 className="mt-4 text-3xl font-semibold text-mj-ink">
-        Talk to us
-      </h1>
-      <p className="mt-2 max-w-xl text-mj-brown">
-        Questions about a product, delivery or your order? WhatsApp is the
-        fastest way to reach us.
-      </p>
+      <Reveal className="mt-4">
+        <h1 className="text-3xl font-semibold text-mj-ink">
+          Talk to us
+        </h1>
+        <p className="mt-2 max-w-xl text-mj-brown">
+          Questions about a product, delivery or your order? WhatsApp is the
+          fastest way to reach us.
+        </p>
+      </Reveal>
 
       <div className="mt-8 grid gap-4 sm:grid-cols-2">
+        <Reveal>
         <a
           href={whatsappHref}
           target="_blank"
           rel="noopener noreferrer"
-          className="rounded-2xl border border-mj-beige bg-white p-5 transition-shadow hover:shadow-sm"
+          className="mj-press block h-full rounded-2xl border border-mj-beige bg-white p-5 hover:shadow-sm"
         >
           <div className="text-xs uppercase tracking-wide text-mj-brown">
             WhatsApp
@@ -44,10 +48,12 @@ export default function ContactPage() {
             Order help and product questions.
           </p>
         </a>
+        </Reveal>
 
+        <Reveal delay={60}>
         <a
           href={`mailto:${CONTACT.email}`}
-          className="rounded-2xl border border-mj-beige bg-white p-5 transition-shadow hover:shadow-sm"
+          className="mj-press block h-full rounded-2xl border border-mj-beige bg-white p-5 hover:shadow-sm"
         >
           <div className="text-xs uppercase tracking-wide text-mj-brown">
             Email
@@ -57,10 +63,12 @@ export default function ContactPage() {
             For invoices and business enquiries.
           </p>
         </a>
+        </Reveal>
 
+        <Reveal delay={120}>
         <a
           href={SITE.url}
-          className="rounded-2xl border border-mj-beige bg-white p-5 transition-shadow hover:shadow-sm"
+          className="mj-press block h-full rounded-2xl border border-mj-beige bg-white p-5 hover:shadow-sm"
         >
           <div className="text-xs uppercase tracking-wide text-mj-brown">
             Website
@@ -68,12 +76,14 @@ export default function ContactPage() {
           <div className="mt-1 font-medium text-mj-ink">{SITE.domain}</div>
           <p className="mt-1 text-sm text-mj-brown">Browse the full range.</p>
         </a>
+        </Reveal>
 
+        <Reveal delay={180}>
         <a
           href={`https://www.instagram.com/${SITE.instagram.replace("@", "")}`}
           target="_blank"
           rel="noopener noreferrer"
-          className="rounded-2xl border border-mj-beige bg-white p-5 transition-shadow hover:shadow-sm"
+          className="mj-press block h-full rounded-2xl border border-mj-beige bg-white p-5 hover:shadow-sm"
         >
           <div className="text-xs uppercase tracking-wide text-mj-brown">
             Instagram
@@ -83,6 +93,7 @@ export default function ContactPage() {
             Recipes and updates from the farm.
           </p>
         </a>
+        </Reveal>
       </div>
 
       <p className="mt-8 text-sm text-mj-brown">

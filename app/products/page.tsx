@@ -2,6 +2,7 @@ import Image from "next/image";
 import Link from "next/link";
 import { products } from "@/lib/products";
 import AddToCart from "@/components/add-to-cart";
+import Reveal from "@/components/reveal";
 
 export const metadata = {
   title: "Shop | Millet Jar",
@@ -20,7 +21,7 @@ export default function ProductsPage() {
         <span className="text-mj-ink">Shop</span>
       </nav>
 
-      <div className="mt-3 flex flex-wrap items-end justify-between gap-3">
+      <Reveal className="mt-3 flex flex-wrap items-end justify-between gap-3">
         <div>
           <h1 className="text-3xl font-semibold text-mj-ink">Our millets</h1>
           <p className="mt-1 text-mj-brown">
@@ -29,18 +30,16 @@ export default function ProductsPage() {
         </div>
         <Link
           href="/cart"
-          className="rounded-full border border-mj-green/30 px-4 py-2 text-sm font-medium text-mj-green hover:bg-mj-cream"
+          className="mj-press rounded-full border border-mj-green/30 px-4 py-2 text-sm font-medium text-mj-green hover:bg-mj-cream"
         >
           Go to cart →
         </Link>
-      </div>
+      </Reveal>
 
       <div className="mt-8 grid grid-cols-1 gap-6 sm:grid-cols-2 lg:grid-cols-3">
-        {products.map((product) => (
-          <article
-            key={product.id}
-            className="group flex flex-col overflow-hidden rounded-2xl bg-white shadow-sm ring-1 ring-mj-beige transition-shadow hover:shadow-md"
-          >
+        {products.map((product, index) => (
+          <Reveal key={product.id} delay={index * 80}>
+            <article className="group flex h-full flex-col overflow-hidden rounded-2xl bg-white shadow-sm ring-1 ring-mj-beige transition-shadow hover:shadow-md">
             <div className="relative aspect-square overflow-hidden">
               <Image
                 src={product.image}
@@ -73,7 +72,7 @@ export default function ProductsPage() {
                     <AddToCart productId={product.id} />
                     <Link
                       href="/cart"
-                      className="rounded-full border border-mj-beige px-4 py-2 text-center text-sm font-medium text-mj-ink transition-colors hover:bg-mj-cream"
+                      className="mj-press rounded-full border border-mj-beige px-4 py-2 text-center text-sm font-medium text-mj-ink hover:bg-mj-cream"
                     >
                       View cart
                     </Link>
@@ -85,7 +84,8 @@ export default function ProductsPage() {
                 )}
               </div>
             </div>
-          </article>
+            </article>
+          </Reveal>
         ))}
       </div>
 

@@ -5,6 +5,8 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useCart } from "@/components/cart-provider";
 import { mutate } from "@/lib/api-client";
+import Reveal from "@/components/reveal";
+import type { SavedAddress } from "@/lib/types";
 
 type OrderResponse = {
   order: { id: string; reference: string; total: number };
@@ -21,9 +23,11 @@ const SLOTS = [
 export default function BookingForm({
   defaultName,
   defaultEmail,
+  savedAddresses = [],
 }: {
   defaultName: string;
   defaultEmail: string;
+  savedAddresses?: SavedAddress[];
 }) {
   const cart = useCart();
   const router = useRouter();
@@ -35,6 +39,19 @@ export default function BookingForm({
   const [slot, setSlot] = useState(SLOTS[0]);
   const [busy, setBusy] = useState<"whatsapp" | "online" | null>(null);
   const [error, setError] = useState("");
+  const [selectedAddressId, setSelectedAddressId] = useState<string | null>(
+    null
+  );
+
+  function applySavedAddress(a: SavedAddress) {
+    setName(a.name);
+    setPhone(a.phone);
+    setAddress(a.address);
+    setCity(a.city || "");
+    setPincode(a.pincode);
+    if (a.slot) setSlot(a.slot);
+    setSelectedAddressId(a.id);
+  }
 
   const valid =
     cart.items.length > 0 &&
@@ -85,7 +102,7 @@ export default function BookingForm({
         </p>
         <Link
           href="/products"
-          className="mt-5 inline-block rounded-full bg-mj-green px-5 py-2.5 text-sm font-medium text-white hover:bg-mj-green-700"
+          className="mj-press mt-5 inline-block rounded-full bg-mj-green px-5 py-2.5 text-sm font-medium text-white hover:bg-mj-green-700"
         >
           Browse products
         </Link>
@@ -95,6 +112,7 @@ export default function BookingForm({
 
   return (
     <div className="grid grid-cols-1 gap-8 lg:grid-cols-[1.4fr_1fr]">
+      <Reveal>
       <form
         onSubmit={(event) => {
           event.preventDefault();
@@ -112,10 +130,48 @@ export default function BookingForm({
         {error && (
           <p
             role="alert"
-            className="rounded-xl border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-700"
+            className="mj-rise rounded-xl border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-700"
           >
             {error}
           </p>
+        )}
+
+        {savedAddresses.length > 0 && (
+          <div>
+            <span className="text-xs font-medium uppercase tracking-wide text-mj-brown">
+              Deliver to a saved address
+            </span>
+            <div className="mt-2 flex flex-col gap-2">
+              {savedAddresses.map((a) => (
+                <button
+                  key={a.id}
+                  type="button"
+                  onClick={() => applySavedAddress(a)}
+                  aria-pressed={selectedAddressId === a.id}
+                  className={`mj-press rounded-xl border px-3.5 py-2.5 text-left ${
+                    selectedAddressId === a.id
+                      ? "border-mj-green bg-mj-cream"
+                      : "border-mj-beige hover:bg-mj-cream/60"
+                  }`}
+                >
+                  <span className="block text-sm font-medium text-mj-ink">
+                    {a.name} · {a.phone}
+                  </span>
+                  <span className="mt-0.5 block text-sm text-mj-brown">
+                    {a.address}
+                    {a.city ? `, ${a.city}` : ""} — {a.pincode}
+                  </span>
+                </button>
+              ))}
+              <button
+                type="button"
+                onClick={() => setSelectedAddressId(null)}
+                className="mj-press self-start text-xs font-medium text-mj-green underline-offset-2 hover:underline"
+              >
+                Use a new address
+              </button>
+            </div>
+          </div>
         )}
 
         <div className="grid gap-4 sm:grid-cols-2">
@@ -158,7 +214,10 @@ export default function BookingForm({
           </span>
           <textarea
             value={address}
-            onChange={(event) => setAddress(event.target.value)}
+            onChange={(event) => {
+              setAddress(event.target.value);
+              if (selectedAddressId !== null) setSelectedAddressId(null);
+            }}
             required
             minLength={5}
             maxLength={300}
@@ -221,7 +280,7 @@ export default function BookingForm({
           <button
             type="submit"
             disabled={!valid || busy !== null}
-            className="flex-1 rounded-full bg-mj-green px-5 py-3 text-sm font-medium text-white transition-colors hover:bg-mj-green-700 disabled:cursor-not-allowed disabled:opacity-50"
+            className="mj-press flex-1 rounded-full bg-mj-green px-5 py-3 text-sm font-medium text-white hover:bg-mj-green-700 disabled:cursor-not-allowed disabled:opacity-50"
           >
             {busy === "online" ? "Creating order…" : "Continue to payment"}
           </button>
@@ -229,7 +288,7 @@ export default function BookingForm({
             type="button"
             onClick={() => submit("whatsapp")}
             disabled={!valid || busy !== null}
-            className="flex-1 rounded-full border border-mj-green px-5 py-3 text-sm font-medium text-mj-green transition-colors hover:bg-mj-cream disabled:cursor-not-allowed disabled:opacity-50"
+            className="mj-press flex-1 rounded-full border border-mj-green px-5 py-3 text-sm font-medium text-mj-green hover:bg-mj-cream disabled:cursor-not-allowed disabled:opacity-50"
           >
             {busy === "whatsapp" ? "Opening WhatsApp…" : "Order on WhatsApp"}
           </button>
@@ -239,7 +298,9 @@ export default function BookingForm({
           before your order is created.
         </p>
       </form>
+      </Reveal>
 
+      <Reveal delay={120}>
       <aside className="h-fit rounded-2xl border border-mj-beige bg-white p-5">
         <h2 className="text-lg font-medium text-mj-ink">Order summary</h2>
         <ul className="mt-4 space-y-2.5 text-sm">
@@ -273,6 +334,7 @@ export default function BookingForm({
           Edit cart
         </Link>
       </aside>
+      </Reveal>
     </div>
   );
 }

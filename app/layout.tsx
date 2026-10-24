@@ -3,7 +3,11 @@ import { Inter } from "next/font/google";
 import "./globals.css";
 import { CartProvider } from "@/components/cart-provider";
 import BrandIntro from "@/components/brand-intro";
-import { SiteFooter, SiteHeader } from "@/components/site-chrome";
+import {
+  SiteFooter,
+  SiteHeader,
+  SiteMobileBar,
+} from "@/components/site-chrome";
 
 const inter = Inter({
   variable: "--font-inter",
@@ -56,6 +60,7 @@ export default function RootLayout({
           <SiteHeader />
           <main className="min-h-[70vh]">{children}</main>
           <SiteFooter />
+          <SiteMobileBar />
         </CartProvider>
       </body>
     </html>

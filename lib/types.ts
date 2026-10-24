@@ -5,7 +5,9 @@ export type User = {
   email: string;
   name: string;
   picture?: string;
-  provider: "google" | "dev";
+  provider: "google" | "dev" | "password";
+  /** scrypt hash; only set for email+password accounts. */
+  passwordHash?: string;
   role: UserRole;
   createdAt: number;
   lastLoginAt: number;
@@ -93,6 +95,19 @@ export type AuditEvent = {
   createdAt: number;
 };
 
+/** A delivery address the customer has used before, kept for rebooking. */
+export type SavedAddress = {
+  id: string;
+  userId: string;
+  name: string;
+  phone: string;
+  address: string;
+  city?: string;
+  pincode: string;
+  slot?: string;
+  createdAt: number;
+};
+
 export type DB = {
   users: User[];
   sessions: UserSession[];
@@ -100,4 +115,5 @@ export type DB = {
   oauthStates: OAuthState[];
   orders: Order[];
   audit: AuditEvent[];
+  savedAddresses: SavedAddress[];
 };

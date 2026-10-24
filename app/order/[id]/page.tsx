@@ -3,6 +3,7 @@ import { notFound, redirect } from "next/navigation";
 import { requireUser } from "@/lib/session";
 import { readDB } from "@/lib/store";
 import { whatsappLink } from "@/lib/whatsapp";
+import Reveal from "@/components/reveal";
 
 export const dynamic = "force-dynamic";
 
@@ -42,17 +43,17 @@ export default async function OrderPage({
   return (
     <div className="mx-auto max-w-3xl px-4 py-10 sm:px-6 lg:px-8">
       {flags.new && (
-        <div className="mb-6 rounded-2xl border border-emerald-200 bg-emerald-50 px-4 py-3 text-sm text-emerald-800">
+        <div className="mj-rise mb-6 rounded-2xl border border-emerald-200 bg-emerald-50 px-4 py-3 text-sm text-emerald-800">
           Order created. We will confirm it shortly.
         </div>
       )}
       {flags.paid && isPaid && (
-        <div className="mb-6 rounded-2xl border border-emerald-200 bg-emerald-50 px-4 py-3 text-sm text-emerald-800">
+        <div className="mj-rise mb-6 rounded-2xl border border-emerald-200 bg-emerald-50 px-4 py-3 text-sm text-emerald-800">
           Payment received. Thank you!
         </div>
       )}
 
-      <div className="flex flex-wrap items-start justify-between gap-3">
+      <Reveal className="flex flex-wrap items-start justify-between gap-3">
         <div>
           <h1 className="text-2xl font-semibold text-mj-ink">
             Order {order.reference}
@@ -73,8 +74,9 @@ export default async function OrderPage({
         >
           {order.status}
         </span>
-      </div>
+      </Reveal>
 
+      <Reveal>
       <section className="mt-6 rounded-2xl border border-mj-beige bg-white p-5">
         <h2 className="text-sm font-semibold uppercase tracking-wide text-mj-brown">
           Items
@@ -111,7 +113,9 @@ export default async function OrderPage({
           </div>
         </dl>
       </section>
+      </Reveal>
 
+      <Reveal delay={90}>
       <section className="mt-4 rounded-2xl border border-mj-beige bg-white p-5">
         <h2 className="text-sm font-semibold uppercase tracking-wide text-mj-brown">
           Delivery
@@ -129,31 +133,32 @@ export default async function OrderPage({
           )}
         </div>
       </section>
+      </Reveal>
 
-      <div className="mt-6 flex flex-wrap gap-3">
+      <Reveal className="mt-6 flex flex-wrap gap-3">
         <a
           href={whatsappLink(order)}
           target="_blank"
           rel="noopener noreferrer"
-          className="rounded-full bg-mj-green px-5 py-2.5 text-sm font-medium text-white hover:bg-mj-green-700"
+          className="mj-press rounded-full bg-mj-green px-5 py-2.5 text-sm font-medium text-white hover:bg-mj-green-700"
         >
           Send order on WhatsApp
         </a>
         {!isPaid && order.status !== "cancelled" && (
           <Link
             href={`/payment?order=${order.id}`}
-            className="rounded-full border border-mj-green px-5 py-2.5 text-sm font-medium text-mj-green hover:bg-mj-cream"
+            className="mj-press rounded-full border border-mj-green px-5 py-2.5 text-sm font-medium text-mj-green hover:bg-mj-cream"
           >
             Complete payment
           </Link>
         )}
         <Link
           href="/account"
-          className="rounded-full border border-mj-beige px-5 py-2.5 text-sm font-medium text-mj-ink hover:bg-mj-cream"
+          className="mj-press rounded-full border border-mj-beige px-5 py-2.5 text-sm font-medium text-mj-ink hover:bg-mj-cream"
         >
           My orders
         </Link>
-      </div>
+      </Reveal>
     </div>
   );
 }

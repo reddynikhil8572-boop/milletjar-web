@@ -3,6 +3,7 @@ import { redirect } from "next/navigation";
 import { requireUser } from "@/lib/session";
 import { readDB } from "@/lib/store";
 import SignOutButton from "@/components/sign-out";
+import Reveal from "@/components/reveal";
 
 export const dynamic = "force-dynamic";
 
@@ -35,7 +36,7 @@ export default async function AccountPage() {
 
   return (
     <div className="mx-auto max-w-5xl px-4 py-10 sm:px-6 lg:px-8">
-      <div className="flex flex-wrap items-start justify-between gap-4">
+      <Reveal className="flex flex-wrap items-start justify-between gap-4">
         <div className="flex items-center gap-4">
           <div className="flex h-14 w-14 items-center justify-center rounded-full bg-mj-green text-lg font-semibold text-white">
             {auth.user.name.charAt(0).toUpperCase()}
@@ -50,16 +51,17 @@ export default async function AccountPage() {
         <div className="flex items-center gap-2">
           <Link
             href="/products"
-            className="rounded-full bg-mj-green px-4 py-2 text-sm font-medium text-white hover:bg-mj-green-700"
+            className="mj-press rounded-full bg-mj-green px-4 py-2 text-sm font-medium text-white hover:bg-mj-green-700"
           >
             Shop again
           </Link>
           <SignOutButton />
         </div>
-      </div>
+      </Reveal>
 
       <div className="mt-8 grid grid-cols-2 gap-3 sm:grid-cols-3">
-        <div className="rounded-2xl border border-mj-beige bg-white p-4">
+        <Reveal delay={0}>
+        <div className="h-full rounded-2xl border border-mj-beige bg-white p-4">
           <div className="text-xs uppercase tracking-wide text-mj-brown">
             Orders
           </div>
@@ -67,7 +69,9 @@ export default async function AccountPage() {
             {orders.length}
           </div>
         </div>
-        <div className="rounded-2xl border border-mj-beige bg-white p-4">
+        </Reveal>
+        <Reveal delay={60}>
+        <div className="h-full rounded-2xl border border-mj-beige bg-white p-4">
           <div className="text-xs uppercase tracking-wide text-mj-brown">
             Paid
           </div>
@@ -75,7 +79,9 @@ export default async function AccountPage() {
             {paidCount}
           </div>
         </div>
-        <div className="rounded-2xl border border-mj-beige bg-white p-4">
+        </Reveal>
+        <Reveal delay={120}>
+        <div className="h-full rounded-2xl border border-mj-beige bg-white p-4">
           <div className="text-xs uppercase tracking-wide text-mj-brown">
             Member since
           </div>
@@ -86,25 +92,30 @@ export default async function AccountPage() {
             })}
           </div>
         </div>
+        </Reveal>
       </div>
 
-      <h2 className="mt-10 text-lg font-medium text-mj-ink">Order history</h2>
+      <Reveal>
+        <h2 className="mt-10 text-lg font-medium text-mj-ink">Order history</h2>
+      </Reveal>
 
       {orders.length === 0 ? (
         <div className="mt-4 rounded-2xl border border-mj-beige bg-white p-8 text-center">
           <p className="text-mj-brown">No orders yet.</p>
           <Link
             href="/products"
-            className="mt-5 inline-block rounded-full bg-mj-green px-5 py-2.5 text-sm font-medium text-white hover:bg-mj-green-700"
+            className="mj-press mt-5 inline-block rounded-full bg-mj-green px-5 py-2.5 text-sm font-medium text-white hover:bg-mj-green-700"
           >
             Start shopping
           </Link>
         </div>
       ) : (
         <ul className="mt-4 space-y-3">
-          {orders.map((order) => (
-            <li
+          {orders.map((order, index) => (
+            <Reveal
+              as="li"
               key={order.id}
+              delay={Math.min(index * 70, 350)}
               className="rounded-2xl border border-mj-beige bg-white p-4"
             >
               <div className="flex flex-wrap items-start justify-between gap-3">
@@ -148,19 +159,19 @@ export default async function AccountPage() {
                   <div className="mt-3 flex gap-2 border-t border-mj-beige pt-3">
                     <Link
                       href={`/payment?order=${order.id}`}
-                      className="rounded-full bg-mj-green px-4 py-1.5 text-xs font-medium text-white hover:bg-mj-green-700"
+                      className="mj-press rounded-full bg-mj-green px-4 py-1.5 text-xs font-medium text-white hover:bg-mj-green-700"
                     >
                       Complete payment
                     </Link>
                     <Link
                       href={`/order/${order.id}`}
-                      className="rounded-full border border-mj-beige px-4 py-1.5 text-xs font-medium text-mj-ink hover:bg-mj-cream"
+                      className="mj-press rounded-full border border-mj-beige px-4 py-1.5 text-xs font-medium text-mj-ink hover:bg-mj-cream"
                     >
                       View order
                     </Link>
                   </div>
                 )}
-            </li>
+            </Reveal>
           ))}
         </ul>
       )}

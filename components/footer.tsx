@@ -5,7 +5,7 @@ import { SITE } from "@/lib/config";
 export default function Footer() {
   return (
     <footer className="mt-20 border-t border-mj-beige bg-mj-cream/50">
-      <div className="mx-auto max-w-7xl px-4 py-12 sm:px-6 lg:px-8">
+      <div className="mx-auto max-w-7xl px-4 pt-12 pb-28 sm:px-6 md:pb-12 lg:px-8">
         <div className="grid grid-cols-1 gap-10 md:grid-cols-4">
           <div className="md:col-span-2">
             <Link
@@ -47,22 +47,22 @@ export default function Footer() {
             <div className="text-sm font-semibold text-mj-ink">Shop</div>
             <ul className="mt-3 space-y-2 text-sm text-mj-brown">
               <li>
-                <Link href="/products" className="hover:text-mj-green">
+                <Link href="/products" className="inline-block py-1 transition-colors hover:text-mj-green">
                   All products
                 </Link>
               </li>
               <li>
-                <Link href="/cart" className="hover:text-mj-green">
+                <Link href="/cart" className="inline-block py-1 transition-colors hover:text-mj-green">
                   Cart
                 </Link>
               </li>
               <li>
-                <Link href="/booking" className="hover:text-mj-green">
+                <Link href="/booking" className="inline-block py-1 transition-colors hover:text-mj-green">
                   Delivery details
                 </Link>
               </li>
               <li>
-                <Link href="/account" className="hover:text-mj-green">
+                <Link href="/account" className="inline-block py-1 transition-colors hover:text-mj-green">
                   My account
                 </Link>
               </li>
@@ -73,7 +73,7 @@ export default function Footer() {
             <div className="text-sm font-semibold text-mj-ink">Connect</div>
             <ul className="mt-3 space-y-2 text-sm text-mj-brown">
               <li>
-                <a href={SITE.url} className="hover:text-mj-green">
+                <a href={SITE.url} className="inline-block py-1 transition-colors hover:text-mj-green">
                   {SITE.domain}
                 </a>
               </li>
@@ -82,13 +82,13 @@ export default function Footer() {
                   href={`https://www.instagram.com/${SITE.instagram.replace("@", "")}`}
                   target="_blank"
                   rel="noopener noreferrer"
-                  className="hover:text-mj-green"
+                  className="inline-block py-1 transition-colors hover:text-mj-green"
                 >
                   {SITE.instagram}
                 </a>
               </li>
               <li>
-                <Link href="/contact" className="hover:text-mj-green">
+                <Link href="/contact" className="inline-block py-1 transition-colors hover:text-mj-green">
                   Contact us
                 </Link>
               </li>

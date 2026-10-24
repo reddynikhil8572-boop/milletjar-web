@@ -1,6 +1,7 @@
 import Image from "next/image";
 import Link from "next/link";
 import { SITE } from "@/lib/config";
+import Reveal from "@/components/reveal";
 
 export const metadata = {
   title: "About | Millet Jar",
@@ -20,7 +21,7 @@ export default function AboutPage() {
       </nav>
 
       <div className="mt-4 grid items-center gap-8 md:grid-cols-2">
-        <div>
+        <Reveal>
           <h1 className="text-3xl font-semibold text-mj-ink">
             Simple food, honestly sourced.
           </h1>
@@ -37,12 +38,13 @@ export default function AboutPage() {
           <div className="mt-6">
             <Link
               href="/products"
-              className="inline-block rounded-full bg-mj-green px-6 py-3 text-sm font-medium text-white hover:bg-mj-green-700"
+              className="mj-press inline-block rounded-full bg-mj-green px-6 py-3 text-sm font-medium text-white hover:bg-mj-green-700"
             >
               Shop the range
             </Link>
           </div>
-        </div>
+        </Reveal>
+        <Reveal delay={120}>
         <div className="relative aspect-[4/3] overflow-hidden rounded-3xl ring-1 ring-mj-beige">
           <Image
             src="/images/WhatsApp Image 2026-10-22 at 5.17.24 PM.jpeg"
@@ -52,6 +54,7 @@ export default function AboutPage() {
             className="object-cover"
           />
         </div>
+        </Reveal>
       </div>
 
       <div className="mt-12 grid gap-4 sm:grid-cols-3">
@@ -68,16 +71,15 @@ export default function AboutPage() {
             title: "Everyday use",
             body: "Millets that fit regular home cooking.",
           },
-        ].map((item) => (
-          <div
-            key={item.title}
-            className="rounded-2xl border border-mj-beige bg-white p-5"
-          >
+        ].map((item, index) => (
+          <Reveal key={item.title} delay={index * 80}>
+          <div className="h-full rounded-2xl border border-mj-beige bg-white p-5">
             <h2 className="text-sm font-semibold text-mj-ink">{item.title}</h2>
             <p className="mt-1 text-sm leading-relaxed text-mj-brown">
               {item.body}
             </p>
           </div>
+          </Reveal>
         ))}
       </div>
 

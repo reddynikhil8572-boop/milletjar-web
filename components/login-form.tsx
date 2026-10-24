@@ -35,6 +35,11 @@ export default function LoginForm({
   const [error, setError] = useState(
     initialError ? ERROR_MESSAGES[initialError] || "Sign-in failed." : ""
   );
+  const [mode, setMode] = useState<"signin" | "signup">("signin");
+  const [pwName, setPwName] = useState("");
+  const [pwEmail, setPwEmail] = useState("");
+  const [pwPassword, setPwPassword] = useState("");
+  const [pwBusy, setPwBusy] = useState(false);
 
   async function devSignIn(event: React.FormEvent) {
     event.preventDefault();
@@ -60,6 +65,44 @@ export default function LoginForm({
       setError("Network error. Please try again.");
     } finally {
       setBusy(false);
+    }
+  }
+
+  async function passwordSubmit(event: React.FormEvent) {
+    event.preventDefault();
+    setPwBusy(true);
+    setError("");
+    try {
+      const res = await fetch(
+        mode === "signup" ? "/api/auth/signup" : "/api/auth/login",
+        {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify(
+            mode === "signup"
+              ? {
+                  email: pwEmail,
+                  password: pwPassword,
+                  name: pwName.trim() || undefined,
+                }
+              : { email: pwEmail, password: pwPassword }
+          ),
+          credentials: "same-origin",
+        }
+      );
+      if (!res.ok) {
+        const data = (await res.json().catch(() => null)) as {
+          error?: string;
+        } | null;
+        setError(data?.error || "Could not continue.");
+        return;
+      }
+      router.replace(next);
+      router.refresh();
+    } catch {
+      setError("Network error. Please try again.");
+    } finally {
+      setPwBusy(false);
     }
   }
 
@@ -132,6 +175,119 @@ export default function LoginForm({
             <code>.env.local</code> and restart the server.
           </div>
         )}
+
+        <div className="mt-5 border-t border-mj-beige pt-5">
+          <div className="flex items-center gap-2">
+            <button
+              type="button"
+              onClick={() => {
+                setMode("signin");
+                setError("");
+              }}
+              className={`mj-press rounded-full px-4 py-1.5 text-sm font-medium ${
+                mode === "signin"
+                  ? "bg-mj-cream text-mj-green"
+                  : "text-mj-brown hover:bg-mj-cream/60"
+              }`}
+            >
+              Sign in
+            </button>
+            <button
+              type="button"
+              onClick={() => {
+                setMode("signup");
+                setError("");
+              }}
+              className={`mj-press rounded-full px-4 py-1.5 text-sm font-medium ${
+                mode === "signup"
+                  ? "bg-mj-cream text-mj-green"
+                  : "text-mj-brown hover:bg-mj-cream/60"
+              }`}
+            >
+              Create account
+            </button>
+          </div>
+
+          <form onSubmit={passwordSubmit} className="mt-4 space-y-3">
+            {mode === "signup" && (
+              <label className="block">
+                <span className="text-xs font-medium uppercase tracking-wide text-mj-brown">
+                  Name
+                </span>
+                <input
+                  value={pwName}
+                  onChange={(event) => setPwName(event.target.value)}
+                  maxLength={80}
+                  autoComplete="name"
+                  placeholder="Your name"
+                  className="mt-1.5 w-full rounded-xl border border-mj-beige px-3.5 py-2.5 text-sm text-mj-ink placeholder:text-mj-brown/50 focus:outline-none focus:ring-2 focus:ring-mj-green/30"
+                />
+              </label>
+            )}
+            <label className="block">
+              <span className="text-xs font-medium uppercase tracking-wide text-mj-brown">
+                Email
+              </span>
+              <input
+                type="email"
+                required
+                value={pwEmail}
+                onChange={(event) => setPwEmail(event.target.value)}
+                autoComplete="email"
+                placeholder="you@example.com"
+                className="mt-1.5 w-full rounded-xl border border-mj-beige px-3.5 py-2.5 text-sm text-mj-ink placeholder:text-mj-brown/50 focus:outline-none focus:ring-2 focus:ring-mj-green/30"
+              />
+            </label>
+            <label className="block">
+              <span className="text-xs font-medium uppercase tracking-wide text-mj-brown">
+                Password
+              </span>
+              <input
+                type="password"
+                required
+                minLength={mode === "signup" ? 8 : 1}
+                value={pwPassword}
+                onChange={(event) => setPwPassword(event.target.value)}
+                autoComplete={
+                  mode === "signup" ? "new-password" : "current-password"
+                }
+                placeholder={
+                  mode === "signup" ? "At least 8 characters" : "Your password"
+                }
+                className="mt-1.5 w-full rounded-xl border border-mj-beige px-3.5 py-2.5 text-sm text-mj-ink placeholder:text-mj-brown/50 focus:outline-none focus:ring-2 focus:ring-mj-green/30"
+              />
+            </label>
+            <button
+              type="submit"
+              disabled={pwBusy}
+              className="mj-press w-full rounded-full bg-mj-green px-5 py-3 text-sm font-medium text-white hover:bg-mj-green-700 disabled:opacity-60"
+            >
+              {pwBusy
+                ? mode === "signup"
+                  ? "Creating account…"
+                  : "Signing in…"
+                : mode === "signup"
+                  ? "Create account"
+                  : "Sign in"}
+            </button>
+          </form>
+
+          <p className="mt-3 text-xs leading-relaxed text-mj-brown">
+            {mode === "signup"
+              ? "Already have an account? "
+              : "New to Millet Jar? "}
+            <button
+              type="button"
+              onClick={() => {
+                setMode(mode === "signup" ? "signin" : "signup");
+                setError("");
+              }}
+              className="font-medium text-mj-green hover:underline"
+            >
+              {mode === "signup" ? "Sign in" : "Create an account"}
+            </button>
+          </p>
+        </div>
 
         {devLoginEnabled && (
           <form onSubmit={devSignIn} className="mt-6 border-t border-mj-beige pt-6">

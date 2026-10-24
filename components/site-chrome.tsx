@@ -3,6 +3,7 @@
 import { usePathname } from "next/navigation";
 import Header from "./header";
 import Footer from "./footer";
+import MobileActionBar from "./mobile-action-bar";
 
 function useIsAdminRoute(): boolean {
   const pathname = usePathname();
@@ -19,4 +20,10 @@ export function SiteHeader() {
 export function SiteFooter() {
   if (useIsAdminRoute()) return null;
   return <Footer />;
+}
+
+/** Mobile quick-action bar, hidden on admin routes. */
+export function SiteMobileBar() {
+  if (useIsAdminRoute()) return null;
+  return <MobileActionBar />;
 }

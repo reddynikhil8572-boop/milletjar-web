@@ -30,6 +30,12 @@ services:
         sync: false
       - key: ADMIN_AUTH_SECRET
         generateValue: true
+      # Supabase data store (users, sessions, orders, saved addresses).
+      # Leave unset to fall back to the local file store.
+      - key: SUPABASE_URL
+        sync: false
+      - key: SUPABASE_SERVICE_ROLE_KEY
+        sync: false
       # Payments (optional)
       - key: PAYMENT_PROVIDER
         value: razorpay

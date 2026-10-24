@@ -17,6 +17,8 @@ export const env = {
   paymentKeySecret: process.env.PAYMENT_KEY_SECRET || "",
   paymentWebhookSecret: process.env.PAYMENT_WEBHOOK_SECRET || "",
   whatsappNumber: process.env.NEXT_PUBLIC_WHATSAPP_NUMBER || "919999999999",
+  supabaseUrl: process.env.SUPABASE_URL || "",
+  supabaseServiceRoleKey: process.env.SUPABASE_SERVICE_ROLE_KEY || "",
 };
 
 let warned = false;
@@ -51,6 +53,14 @@ export function googleConfigured(): boolean {
 
 export function paymentConfigured(): boolean {
   return Boolean(env.paymentKeyId && env.paymentKeySecret);
+}
+
+/**
+ * Supabase (Postgres via the HTTP data API) is used when URL + service key
+ * are set; otherwise the local file store keeps working for development.
+ */
+export function supabaseConfigured(): boolean {
+  return Boolean(env.supabaseUrl && env.supabaseServiceRoleKey);
 }
 
 export function adminConfigured(): boolean {

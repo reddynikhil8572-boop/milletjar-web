@@ -52,7 +52,7 @@ export default function CartPage() {
         </p>
         <Link
           href="/products"
-          className="mt-6 inline-block rounded-full bg-mj-green px-6 py-3 text-sm font-medium text-white hover:bg-mj-green-700"
+          className="mj-press mt-6 inline-block rounded-full bg-mj-green px-6 py-3 text-sm font-medium text-white hover:bg-mj-green-700"
         >
           Browse products
         </Link>
@@ -72,7 +72,7 @@ export default function CartPage() {
           {cart.items.map(({ product, qty, lineTotal }) => (
             <div
               key={product.id}
-              className="flex gap-4 rounded-2xl border border-mj-beige bg-white p-3 sm:p-4"
+              className="mj-rise flex gap-4 rounded-2xl border border-mj-beige bg-white p-3 sm:p-4"
             >
               <div className="relative h-24 w-24 shrink-0 overflow-hidden rounded-xl ring-1 ring-mj-beige">
                 <Image
@@ -103,7 +103,7 @@ export default function CartPage() {
                       type="button"
                       aria-label={`Decrease ${product.name}`}
                       onClick={() => cart.setQty(product.id, qty - 1)}
-                      className="h-8 w-8 rounded-full border border-mj-beige text-mj-ink transition-colors hover:bg-mj-cream"
+                      className="mj-press h-11 w-11 rounded-full border border-mj-beige text-mj-ink hover:bg-mj-cream sm:h-8 sm:w-8"
                     >
                       −
                     </button>
@@ -114,7 +114,7 @@ export default function CartPage() {
                       type="button"
                       aria-label={`Increase ${product.name}`}
                       onClick={() => cart.setQty(product.id, qty + 1)}
-                      className="h-8 w-8 rounded-full border border-mj-beige text-mj-ink transition-colors hover:bg-mj-cream"
+                      className="mj-press h-11 w-11 rounded-full border border-mj-beige text-mj-ink hover:bg-mj-cream sm:h-8 sm:w-8"
                     >
                       +
                     </button>
@@ -122,7 +122,7 @@ export default function CartPage() {
                   <button
                     type="button"
                     onClick={() => cart.remove(product.id)}
-                    className="text-xs font-medium text-mj-brown underline-offset-2 hover:text-mj-green hover:underline"
+                    className="inline-flex min-h-10 items-center text-xs font-medium text-mj-brown underline-offset-2 hover:text-mj-green hover:underline"
                   >
                     Remove
                   </button>
@@ -173,7 +173,7 @@ export default function CartPage() {
           <button
             type="button"
             onClick={() => router.push("/booking")}
-            className="mt-5 w-full rounded-full bg-mj-green px-5 py-3 text-sm font-medium text-white transition-colors hover:bg-mj-green-700"
+            className="mj-press mt-5 w-full rounded-full bg-mj-green px-5 py-3 text-sm font-medium text-white hover:bg-mj-green-700"
           >
             Continue to delivery
           </button>

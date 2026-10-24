@@ -97,6 +97,41 @@ export async function POST(req: Request) {
         target: order.id,
         createdAt: now,
       });
+
+      // Remember the delivery address so the next booking can offer it.
+      const c = parsed.data.customer;
+      const norm = (s: string) => s.toLowerCase().replace(/\s+/g, " ").trim();
+      const key = norm(c.address);
+      const existing = db.savedAddresses.find(
+        (a) => a.userId === guard.user.id && norm(a.address) === key
+      );
+      if (existing) {
+        existing.name = c.name;
+        existing.phone = c.phone;
+        existing.city = c.city;
+        existing.slot = c.slot;
+        existing.createdAt = now;
+      } else {
+        db.savedAddresses.push({
+          id: `adr_${randomToken(8)}`,
+          userId: guard.user.id,
+          name: c.name,
+          phone: c.phone,
+          address: c.address,
+          city: c.city,
+          pincode: c.pincode,
+          slot: c.slot,
+          createdAt: now,
+        });
+        // Keep only the 6 most recently used addresses per customer.
+        const mine = db.savedAddresses
+          .filter((a) => a.userId === guard.user.id)
+          .sort((a, b) => b.createdAt - a.createdAt);
+        if (mine.length > 6) {
+          const drop = new Set(mine.slice(6).map((a) => a.id));
+          db.savedAddresses = db.savedAddresses.filter((a) => !drop.has(a.id));
+        }
+      }
     });
 
     const whatsappUrl = `https://wa.me/${env.whatsappNumber}?text=${encodeURIComponent(

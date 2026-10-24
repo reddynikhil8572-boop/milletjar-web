@@ -22,12 +22,11 @@ export default function AddToCart({
   return (
     <button
       type="button"
-      onClick={handleAdd}
-      className={`inline-flex items-center justify-center gap-2 rounded-full font-medium transition-colors ${
+      onClick={handleAdd}        className={`mj-press inline-flex items-center justify-center gap-2 rounded-full font-medium ${
         compact ? "px-4 py-2 text-sm" : "w-full px-5 py-2.5 text-sm"
       } ${
         added
-          ? "bg-mj-orange text-white"
+          ? "mj-pop bg-mj-orange text-white"
           : "bg-mj-green text-white hover:bg-mj-green-700"
       }`}
     >

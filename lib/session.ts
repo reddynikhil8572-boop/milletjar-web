@@ -1,6 +1,6 @@
 import { cache } from "react";
 import { cookies } from "next/headers";
-import { randomToken, sha256 } from "./crypto";
+import { hashPassword, randomToken, sha256, verifyPassword } from "./crypto";
 import { prune, readDB, writeDB } from "./store";
 import { env } from "./env";
 import type { User, UserSession } from "./types";
@@ -95,6 +95,53 @@ export async function destroyUserSession(): Promise<void> {
     });
   }
   store.delete(USER_COOKIE);
+}
+
+/** Well-formed dummy hash so failed logins still burn one scrypt round. */
+const DUMMY_HASH = `scrypt$${"0".repeat(32)}$${"0".repeat(128)}`;
+
+/** Creates an email+password account. Returns null if the email is taken. */
+export async function createPasswordUser(input: {
+  email: string;
+  name?: string;
+  password: string;
+}): Promise<User | null> {
+  const email = input.email.trim().toLowerCase();
+  const passwordHash = await hashPassword(input.password);
+  return writeDB((db) => {
+    if (db.users.some((u) => u.email === email)) return null;
+    const now = Date.now();
+    const user: User = {
+      id: `usr_${randomToken(12)}`,
+      email,
+      name: input.name?.trim() || email.split("@")[0],
+      provider: "password",
+      passwordHash,
+      role: "customer",
+      createdAt: now,
+      lastLoginAt: now,
+    };
+    db.users.push(user);
+    return user;
+  });
+}
+
+/** Verifies email+password. Returns null on any mismatch. */
+export async function loginWithPassword(input: {
+  email: string;
+  password: string;
+}): Promise<User | null> {
+  const email = input.email.trim().toLowerCase();
+  const user = await readDB((db) => db.users.find((u) => u.email === email));
+  const stored = user?.passwordHash;
+  const ok = await verifyPassword(input.password, stored || DUMMY_HASH);
+  if (!user || !stored || !ok) return null;
+  return writeDB((db) => {
+    const current = db.users.find((u) => u.id === user.id);
+    if (!current) return null;
+    current.lastLoginAt = Date.now();
+    return current;
+  });
 }
 
 export async function upsertGoogleUser(input: {

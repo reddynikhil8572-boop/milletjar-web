@@ -33,10 +33,181 @@ body {
     Helvetica, Arial, "Apple Color Emoji", "Segoe UI Emoji";
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
+  -webkit-tap-highlight-color: transparent;
+  -webkit-text-size-adjust: 100%;
 }
 
 html {
   scroll-behavior: smooth;
+}
+
+/* Remove double-tap zoom delay on touch devices for interactive elements. */
+a,
+button,
+[role="button"] {
+  touch-action: manipulation;
+}
+
+/* iOS auto-zooms focused fields smaller than 16px; keep form fields at 16px
+   on small screens so focusing an input never shifts the layout. */
+@media (max-width: 640px) {
+  input:not([type="checkbox"]):not([type="radio"]):not([type="range"]),
+  textarea,
+  select {
+    font-size: 16px;
+  }
+}
+
+/* ------------------------------------------------------------------ */
+/* Mobile-friendly motion primitives (subtle & smooth)                 */
+/* ------------------------------------------------------------------ */
+
+/* Soft press feedback for taps on buttons and pill links. Unlayered so it
+   composes with (and wins over) Tailwind's transition utilities. */
+.mj-press {
+  -webkit-tap-highlight-color: transparent;
+  touch-action: manipulation;
+  transition-property:
+    transform, background-color, color, border-color, box-shadow;
+  transition-duration: 200ms;
+  transition-timing-function: cubic-bezier(0.22, 1, 0.36, 1);
+}
+
+.mj-press:active {
+  transform: scale(0.97);
+}
+
+/* Gentle entrance for elements that mount after an interaction (e.g. a new
+   cart line) or on first paint. */
+.mj-rise {
+  animation: mj-rise 450ms cubic-bezier(0.22, 1, 0.36, 1) both;
+}
+
+/* Small spring pop for badges and confirmations (re-runs on remount). */
+.mj-pop {
+  animation: mj-pop-in 350ms cubic-bezier(0.34, 1.56, 0.64, 1) both;
+}
+
+@keyframes mj-rise {
+  from {
+    opacity: 0;
+    transform: translateY(10px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@keyframes mj-pop-in {
+  0% {
+    opacity: 0;
+    transform: scale(0.4);
+  }
+  60% {
+    opacity: 1;
+    transform: scale(1.15);
+  }
+  100% {
+    opacity: 1;
+    transform: scale(1);
+  }
+}
+
+/* ------------------------------------------------------------------ */
+/* Scroll reveal (components/reveal.tsx)                               */
+/* ------------------------------------------------------------------ */
+
+.mj-reveal {
+  opacity: 0;
+  transform: translateY(14px);
+  transition:
+    opacity 600ms cubic-bezier(0.22, 1, 0.36, 1),
+    transform 600ms cubic-bezier(0.22, 1, 0.36, 1);
+}
+
+.mj-reveal.is-visible {
+  opacity: 1;
+  transform: none;
+}
+
+/* Without scripting the observer never runs, so show content outright. */
+@media (scripting: none) {
+  .mj-reveal {
+    opacity: 1;
+    transform: none;
+  }
+}
+
+/* ------------------------------------------------------------------ */
+/* Animated mobile menu (components/header.tsx)                        */
+/* ------------------------------------------------------------------ */
+
+.mj-mobile-menu {
+  overflow: hidden;
+  max-height: 0;
+  opacity: 0;
+  visibility: hidden;
+  transition:
+    max-height 320ms cubic-bezier(0.22, 1, 0.36, 1),
+    opacity 240ms ease,
+    visibility 0s linear 320ms;
+}
+
+.mj-mobile-menu[data-open="true"] {
+  max-height: 26rem;
+  opacity: 1;
+  visibility: visible;
+  transition:
+    max-height 340ms cubic-bezier(0.22, 1, 0.36, 1),
+    opacity 280ms ease,
+    visibility 0s;
+}
+
+/* Stagger the menu rows in once the panel starts opening. */
+.mj-mobile-menu[data-open="true"] .mj-mobile-menu__list > :nth-child(1) {
+  animation: mj-menu-item 380ms 40ms cubic-bezier(0.22, 1, 0.36, 1) both;
+}
+
+.mj-mobile-menu[data-open="true"] .mj-mobile-menu__list > :nth-child(2) {
+  animation: mj-menu-item 380ms 90ms cubic-bezier(0.22, 1, 0.36, 1) both;
+}
+
+.mj-mobile-menu[data-open="true"] .mj-mobile-menu__list > :nth-child(3) {
+  animation: mj-menu-item 380ms 140ms cubic-bezier(0.22, 1, 0.36, 1) both;
+}
+
+.mj-mobile-menu[data-open="true"] .mj-mobile-menu__list > :nth-child(4) {
+  animation: mj-menu-item 380ms 190ms cubic-bezier(0.22, 1, 0.36, 1) both;
+}
+
+.mj-mobile-menu[data-open="true"] .mj-mobile-menu__list > :nth-child(5) {
+  animation: mj-menu-item 380ms 240ms cubic-bezier(0.22, 1, 0.36, 1) both;
+}
+
+@keyframes mj-menu-item {
+  from {
+    opacity: 0;
+    transform: translateY(-6px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+/* Bottom action bar (components/mobile-action-bar.tsx) slides up on mount. */
+.mj-action-bar {
+  animation: mj-bar-up 520ms cubic-bezier(0.22, 1, 0.36, 1) both;
+}
+
+@keyframes mj-bar-up {
+  from {
+    transform: translateY(100%);
+  }
+  to {
+    transform: translateY(0);
+  }
 }
 
 /* ------------------------------------------------------------------ */
@@ -268,6 +439,28 @@ html {
   }
   .mj-intro__bar-fill {
     transform: scaleX(1);
+  }
+  html {
+    scroll-behavior: auto;
+  }
+  .mj-reveal {
+    opacity: 1 !important;
+    transform: none !important;
+    transition: none !important;
+  }
+  .mj-press,
+  .mj-mobile-menu,
+  .mj-mobile-menu[data-open="true"] {
+    transition: none !important;
+  }
+  .mj-press:active {
+    transform: none;
+  }
+  .mj-rise,
+  .mj-pop,
+  .mj-action-bar,
+  .mj-mobile-menu .mj-mobile-menu__list > * {
+    animation: none !important;
   }
 }
 

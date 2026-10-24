@@ -1,13 +1,16 @@
 import fs from "node:fs/promises";
 import path from "node:path";
+import { supabaseConfigured } from "./env";
 import type { DB } from "./types";
 
 /**
- * Minimal JSON persistence layer.
+ * Persistence layer with two backends behind one interface:
  *
- * Chosen deliberately: zero native dependencies so the same code runs on
- * Windows dev boxes, Render and Railway. Swap `readDB`/`writeDB` for a real
- * database client (Postgres/Redis) when you outgrow a single instance.
+ * - Supabase (Postgres over HTTPS) when SUPABASE_URL +
+ *   SUPABASE_SERVICE_ROLE_KEY are set — production.
+ * - A local JSON file otherwise — zero-dependency development.
+ *
+ * The Supabase module is imported lazily so file mode never loads it.
  */
 const DATA_DIR = process.env.DATA_DIR || path.join(process.cwd(), ".data");
 const DB_FILE = path.join(DATA_DIR, "db.json");
@@ -20,6 +23,7 @@ function emptyDB(): DB {
     oauthStates: [],
     orders: [],
     audit: [],
+    savedAddresses: [],
   };
 }
 
@@ -45,14 +49,26 @@ async function persist(db: DB): Promise<void> {
   await fs.rename(tmp, DB_FILE);
 }
 
+function supabaseStore() {
+  return import("./supabase-store");
+}
+
 /** Read-only access. Do not mutate the passed object. */
 export async function readDB<T>(fn: (db: DB) => T | Promise<T>): Promise<T> {
+  if (supabaseConfigured()) {
+    const store = await supabaseStore();
+    return store.readDB(fn);
+  }
   const db = await load();
   return fn(db);
 }
 
 /** Serialized read-modify-write. Mutations are persisted atomically. */
 export async function writeDB<T>(fn: (db: DB) => T | Promise<T>): Promise<T> {
+  if (supabaseConfigured()) {
+    const store = await supabaseStore();
+    return store.writeDB(fn);
+  }
   const run = async (): Promise<T> => {
     const db = await load();
     const result = await fn(db);

@@ -16,10 +16,13 @@ const links = [
 ];
 
 export default function Header() {
-  const [open, setOpen] = useState(false);
   const [session, setSession] = useState<SessionInfo | null>(null);
   const cart = useCart();
   const pathname = usePathname();
+  // The mobile menu is "open" only for the pathname it was opened on, so any
+  // navigation (including back/forward) closes it without needing an effect.
+  const [menuOpenAt, setMenuOpenAt] = useState<string | null>(null);
+  const open = menuOpenAt === pathname;
 
   useEffect(() => {
     let alive = true;
@@ -86,7 +89,7 @@ export default function Header() {
           <div className="flex items-center gap-2">
             <Link
               href="/cart"
-              className="relative inline-flex h-10 items-center gap-2 rounded-full border border-mj-beige px-3 text-sm text-mj-ink transition-colors hover:bg-mj-cream"
+              className="mj-press relative inline-flex h-11 items-center gap-2 rounded-full border border-mj-beige px-3 text-sm text-mj-ink hover:bg-mj-cream"
               aria-label={`Cart with ${cart.count} items`}
             >
               <svg
@@ -105,7 +108,10 @@ export default function Header() {
               </svg>
               <span className="hidden sm:inline">Cart</span>
               {cart.count > 0 && (
-                <span className="absolute -right-1 -top-1 flex h-5 min-w-5 items-center justify-center rounded-full bg-mj-orange px-1 text-[11px] font-semibold text-white">
+                <span
+                  key={cart.count}
+                  className="mj-pop absolute -right-1 -top-1 flex h-5 min-w-5 items-center justify-center rounded-full bg-mj-orange px-1 text-[11px] font-semibold text-white"
+                >
                   {cart.count}
                 </span>
               )}
@@ -132,8 +138,8 @@ export default function Header() {
 
             <button
               type="button"
-              className="inline-flex h-10 w-10 items-center justify-center rounded-full text-mj-ink hover:bg-mj-cream md:hidden"
-              onClick={() => setOpen((value) => !value)}
+              className="mj-press inline-flex h-11 w-11 items-center justify-center rounded-full text-mj-ink hover:bg-mj-cream md:hidden"
+              onClick={() => setMenuOpenAt(open ? null : pathname)}
               aria-label="Toggle menu"
               aria-expanded={open}
             >
@@ -159,29 +165,32 @@ export default function Header() {
         </div>
       </div>
 
-      {open && (
-        <div className="border-t border-mj-beige bg-white md:hidden">
-          <div className="mx-auto flex max-w-7xl flex-col px-4 py-2 text-sm">
-            {links.map((link) => (
-              <Link
-                key={link.href}
-                href={link.href}
-                onClick={() => setOpen(false)}
-                className="rounded-lg px-2 py-2.5 text-mj-ink hover:bg-mj-cream"
-              >
-                {link.label}
-              </Link>
-            ))}
+      <div
+        className={`mj-mobile-menu bg-white md:hidden${
+          open ? " border-t border-mj-beige" : ""
+        }`}
+        data-open={open}
+      >
+        <div className="mj-mobile-menu__list mx-auto flex max-w-7xl flex-col px-4 py-2 text-sm">
+          {links.map((link) => (
             <Link
-              href={session?.user ? "/account" : "/login"}
-              onClick={() => setOpen(false)}
-              className="mt-1 rounded-lg bg-mj-green px-2 py-2.5 text-center font-medium text-white"
+              key={link.href}
+              href={link.href}
+              onClick={() => setMenuOpenAt(null)}
+              className="mj-press rounded-lg px-2 py-3 text-mj-ink hover:bg-mj-cream"
             >
-              {session?.user ? "My Account" : "Sign in"}
+              {link.label}
             </Link>
-          </div>
+          ))}
+          <Link
+            href={session?.user ? "/account" : "/login"}
+            onClick={() => setMenuOpenAt(null)}
+            className="mj-press mt-1 rounded-lg bg-mj-green px-2 py-3 text-center font-medium text-white hover:bg-mj-green-700"
+          >
+            {session?.user ? "My Account" : "Sign in"}
+          </Link>
         </div>
-      )}
+      </div>
     </header>
   );
 }
