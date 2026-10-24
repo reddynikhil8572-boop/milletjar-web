@@ -1,10 +1,10 @@
 import { NextResponse } from "next/server";
 import { z } from "zod";
-import { adminConfigured, env } from "@/lib/env";
+import { supabaseConfigured } from "@/lib/env";
 import { guardPublic, jsonError, tooMany } from "@/lib/guard";
 import { clientIp, rateLimit } from "@/lib/ratelimit";
 import { createAdminSession } from "@/lib/admin";
-import { safeEqual, verifyPassword } from "@/lib/crypto";
+import { supabaseAdmin } from "@/lib/supabase";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -15,8 +15,9 @@ const schema = z.object({
 });
 
 /**
- * Admin sign-in. Completely separate from customer auth:
- * different endpoint, cookie, secret, session store and lifetime.
+ * Admin sign-in via Supabase Auth.
+ * Uses credentials from Supabase Authentication (auth.users).
+ * Authorization: user must exist in public.users with role 'admin'.
  */
 export async function POST(req: Request) {
   const ip = clientIp(req);
@@ -27,7 +28,7 @@ export async function POST(req: Request) {
   const attempt = rateLimit(`admin:attempt:${ip}`, 5, 15 * 60_000);
   if (!attempt.allowed) return tooMany(attempt.retryAfter);
 
-  if (!adminConfigured()) {
+  if (!supabaseConfigured()) {
     return jsonError(503, "Admin sign-in is not configured");
   }
 
@@ -44,20 +45,55 @@ export async function POST(req: Request) {
   const email = parsed.data.email.trim().toLowerCase();
   const password = parsed.data.password;
 
-  // Compare email first in constant time, then password.
-  const emailMatches = safeEqual(email, env.adminEmail);
-  let passwordMatches = false;
-  if (emailMatches) {
-    passwordMatches = env.adminPasswordHash
-      ? await verifyPassword(password, env.adminPasswordHash)
-      : !env.isProd && safeEqual(password, env.adminPassword);
-  }
+  try {
+    const supabase = supabaseAdmin();
+    
+    // Authenticate with Supabase Auth
+    const { data: authData, error: authError } = await supabase.auth.signInWithPassword({
+      email,
+      password,
+    });
 
-  if (!emailMatches || !passwordMatches) {
-    // Generic message: never reveal which field was wrong.
-    return jsonError(401, "Invalid credentials");
-  }
+    if (authError || !authData.user) {
+      return jsonError(401, "Invalid credentials");
+    }
 
-  const csrf = await createAdminSession(email);
-  return NextResponse.json({ ok: true, csrfToken: csrf }, { status: 200 });
+    // Check if user is authorized as admin in our users table
+    const { data: existingUser } = await supabase
+      .from("users")
+      .select("role, email")
+      .eq("email", email)
+      .maybeSingle();
+
+    if (existingUser) {
+      if (existingUser.role !== "admin") {
+        return jsonError(401, "Invalid credentials");
+      }
+    } else {
+      // Auto-provision admin user if authenticated via Supabase Auth
+      const { randomToken } = await import("@/lib/crypto");
+      const now = Date.now();
+      const { error: insertError } = await supabase.from("users").insert({
+        id: authData.user.id || `usr_${randomToken(12)}`,
+        email,
+        name: authData.user.user_metadata?.name || email.split("@")[0],
+        picture: authData.user.user_metadata?.avatar_url || null,
+        provider: "password",
+        passwordHash: null,
+        role: "admin",
+        createdAt: now,
+        lastLoginAt: now,
+      });
+      if (insertError) {
+        console.error("[admin/login] failed to provision user:", insertError);
+        return jsonError(401, "Invalid credentials");
+      }
+    }
+
+    const csrf = await createAdminSession(email);
+    return NextResponse.json({ ok: true, csrfToken: csrf }, { status: 200 });
+  } catch (err) {
+    console.error("[admin/login] error:", err);
+    return jsonError(500, "Internal server error");
+  }
 }
