@@ -36,6 +36,9 @@ export async function PUT(req: Request) {
     const announcements = await saveAnnouncements(body, guard.email);
     return NextResponse.json({ ok: true, announcements }, { status: 200 });
   } catch {
-    return jsonError(500, "Could not save the announcements");
+    return jsonError(
+      500,
+      "Could not save. Run supabase/schema.sql in the Supabase SQL Editor, then retry."
+    );
   }
 }

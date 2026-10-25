@@ -82,7 +82,6 @@ export async function POST(req: Request) {
         "Catalog table missing: run supabase/schema.sql in the Supabase SQL Editor, then retry."
       );
     }
-
     return NextResponse.json({ ok: true, product: created }, { status: 201 });
   } catch {
     return jsonError(500, "Could not save the product. Is supabase/schema.sql up to date?");

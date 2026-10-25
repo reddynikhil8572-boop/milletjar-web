@@ -72,5 +72,13 @@ export async function saveAnnouncements(
       });
     }
   });
+
+  // The store tolerates a missing `settings` table; without this check a save
+  // would look successful while storing nothing.
+  const saved = await readTable("settings");
+  const row = saved.find((entry) => entry.key === ANNOUNCEMENTS_KEY);
+  if (!row || JSON.stringify(sanitizeAnnouncements(row.value)) !== JSON.stringify(value)) {
+    throw new Error("announcements were not persisted");
+  }
   return value;
 }

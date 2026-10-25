@@ -23,7 +23,10 @@ async function all<T>(table: string): Promise<T[]> {
     // whole site down; the storefront falls back to the seed catalog.
     if (isMissingTable(error)) {
       const fallback = TABLE_FALLBACKS[table];
-      if (fallback) return [...fallback] as T[];
+      // Deep copy: callers mutate rows (e.g. an admin PATCH), and sharing one
+      // instance would let edits bleed across requests — and make it look like
+      // a write persisted when it never reached the database.
+      if (fallback) return structuredClone(fallback) as T[];
     }
     throw new Error(`supabase:${table}: ${error.message}`);
   }

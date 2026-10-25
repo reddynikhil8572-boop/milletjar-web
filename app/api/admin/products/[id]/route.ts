@@ -2,10 +2,13 @@ import { NextResponse } from "next/server";
 import { randomToken } from "@/lib/crypto";
 import { guardAdmin, jsonError } from "@/lib/guard";
 import { productPatchSchema } from "@/lib/product-schema";
-import { writeDB } from "@/lib/store";
+import { readTable, writeDB } from "@/lib/store";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
+
+const MIGRATION_HINT =
+  "Catalog table missing: run supabase/schema.sql in the Supabase SQL Editor, then retry.";
 
 export async function PATCH(
   req: Request,
@@ -66,8 +69,18 @@ export async function PATCH(
       return jsonError(409, "A product with that slug already exists");
     }
     if (!result.found) return jsonError(404, "Product not found");
+
+    // The store tolerates a missing `products` table so the storefront keeps
+    // serving the seed catalog — without this check an update would look
+    // successful in the admin panel while storing nothing.
+    const saved = await readTable("products");
+    const persisted = saved.find((p) => p.id === id);
+    if (!persisted || persisted.updatedAt !== result.product.updatedAt) {
+      return jsonError(500, MIGRATION_HINT);
+    }
+
     return NextResponse.json(
-      { ok: true, product: result.product },
+      { ok: true, product: persisted },
       { status: 200 }
     );
   } catch {
@@ -105,6 +118,10 @@ export async function DELETE(
     });
 
     if (!removed) return jsonError(404, "Product not found");
+
+    const saved = await readTable("products");
+    if (saved.some((p) => p.id === id)) return jsonError(500, MIGRATION_HINT);
+
     return NextResponse.json({ ok: true }, { status: 200 });
   } catch {
     return jsonError(500, "Could not delete the product");
