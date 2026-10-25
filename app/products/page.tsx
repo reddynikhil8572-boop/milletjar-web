@@ -6,7 +6,7 @@ import {
   isAvailable,
   type Product,
 } from "@/lib/products";
-import                      <AddToCart from "@/components/add-to-cart";
+import AddToCart from "@/components/add-to-cart";
 import Reveal from "@/components/reveal";
 
 // Admin edits prices, labels and stock, so the catalog is read per request.
@@ -81,7 +81,7 @@ export default async function ProductsPage() {
                     </span>
                   )}
                 {product.labels.length > 0 && (
-                  <span                <span className="absolute left-2 top-2 flex flex-wrap gap-1">
+                  <span className="absolute left-2 top-2 flex flex-wrap gap-1">
                     {product.labels.map((label) => (
                       <span
                         key={label}
@@ -136,7 +136,6 @@ export default async function ProductsPage() {
                           ? undefined
                           : product.stock
                       }
-                      compact
                     />
                     {isAvailable(product) ? (
                       <Link
