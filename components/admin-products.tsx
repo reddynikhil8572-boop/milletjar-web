@@ -31,7 +31,10 @@ type FormState = {
   slug: string;
   description: string;
   price: string;
+  /** Either an MRP value, or a discount percentage with the % suffix. */
   compareAtPrice: string;
+  /** When true, compareAtPrice holds a percentage like "20%". */
+  discountMode: boolean;
   image: string;
   category: "millet" | "mix" | "snack";
   labels: string;
@@ -46,6 +49,7 @@ const EMPTY_FORM: FormState = {
   description: "",
   price: "",
   compareAtPrice: "",
+  discountMode: false,
   image: "",
   category: "millet",
   labels: "",
@@ -54,12 +58,14 @@ const EMPTY_FORM: FormState = {
 };
 
 function toForm(product: AdminProduct): FormState {
+  // Keep the existing MRP when it is set; start in MRP mode.
   return {
     name: product.name,
     slug: product.slug,
     description: product.description,
     price: String(product.price),
     compareAtPrice: product.compareAtPrice ? String(product.compareAtPrice) : "",
+    discountMode: false,
     image: product.image,
     category: product.category,
     labels: product.labels.join(", "),
@@ -75,6 +81,63 @@ function slugify(value: string): string {
     .replace(/[^a-z0-9]+/g, "-")
     .replace(/^-+|-+$/g, "")
     .slice(0, 140);
+}
+
+/**
+ * Effective MRP derived from either an explicit value or a discount percentage.
+ * When no discount is configured, returns null (no strikethrough).
+ */
+function effectiveMrp(form: FormState): number | null {
+  const priceRaw = form.price.trim();
+  if (!priceRaw) return null;
+  const price = Number(priceRaw);
+  if (!Number.isFinite(price) || price <= 0) return null;
+
+  const entered = form.compareAtPrice.trim();
+  if (!entered) return null;
+
+  if (form.discountMode) {
+    // "20%" -> MRP = price / (1 - 0.20)
+    const pctRaw = entered.replace(/%/g, "").trim();
+    if (!pctRaw) return null;
+    const pct = Number(pctRaw);
+    if (!Number.isFinite(pct) || pct <= 0 || pct >= 100) return null;
+    const mrp = price / (1 - pct / 100);
+    return Math.round(mrp);
+  }
+
+  const mrp = Number(entered);
+  if (!Number.isFinite(mrp) || mrp <= 0) return null;
+  return mrp;
+}
+
+/** Discount preview, derived from the (possibly partial) form values. */
+function discountPreview(form: FormState): {
+  active: boolean;
+  price: number | null;
+  mrp: number | null;
+  savings: number;
+  percent: number;
+} {
+  const priceRaw = form.price.trim();
+  if (!priceRaw) return { active: false, price: null, mrp: null, savings: 0, percent: 0 };
+  const price = Number(priceRaw);
+  if (!Number.isFinite(price) || price <= 0) return { active: false, price, mrp: null, savings: 0, percent: 0 };
+
+  const mrp = effectiveMrp(form);
+  if (mrp === null || mrp <= price) return { active: false, price, mrp, savings: 0, percent: 0 };
+  const savings = mrp - price;
+  const percent = Math.round((savings / mrp) * 100);
+  return { active: true, price, mrp, savings, percent };
+}
+
+function computedCompareAtPrice(form: FormState): number | null {
+  if (!form.price.trim()) return null;
+  const price = Number(form.price);
+  if (!Number.isFinite(price) || price <= 0) return null;
+  const mrp = effectiveMrp(form);
+  if (mrp === null || mrp <= price) return null;
+  return mrp;
 }
 
 const inputClass =
@@ -169,7 +232,7 @@ export default function AdminProducts({ csrf }: { csrf: string }) {
     setNotice("");
 
     const price = Number(form.price);
-    const compareAt = form.compareAtPrice ? Number(form.compareAtPrice) : null;
+    const compareAt = computedCompareAtPrice(form);
     const labels = form.labels
       .split(",")
       .map((label) => label.trim())
@@ -276,6 +339,8 @@ export default function AdminProducts({ csrf }: { csrf: string }) {
     }
   }
 
+  const preview = discountPreview(form);
+
   return (
     <div className="mt-6">
       <div className="flex flex-wrap items-center justify-between gap-3">
@@ -307,6 +372,41 @@ export default function AdminProducts({ csrf }: { csrf: string }) {
         <p className="mt-4 rounded-xl border border-emerald-200 bg-emerald-50 px-3 py-2 text-sm text-emerald-700">
           {notice}
         </p>
+      )}
+
+      {products.length > 0 && (
+        <div className="mt-5 rounded-2xl border border-mj-beige bg-mj-cream/40 p-4">
+          <span className="text-xs font-medium uppercase tracking-wide text-mj-brown">
+            Catalog discount summary
+          </span>
+          <ul className="mt-2 flex flex-wrap gap-2 text-xs text-mj-brown">
+            {products
+              .filter((p) => p.compareAtPrice !== null && p.compareAtPrice > p.price)
+              .map((p) => {
+                const pct = Math.round(
+                  ((p.compareAtPrice! - p.price) / p.compareAtPrice!) * 100
+                );
+                return (
+                  <li
+                    key={p.id}
+                    className="rounded-full bg-white px-3 py-1 ring-1 ring-mj-beige"
+                  >
+                    <button
+                      type="button"
+                      onClick={() => startEdit(p)}
+                      className="hover:text-mj-green"
+                    >
+                      {p.name} — {pct}% off
+                    </button>
+                  </li>
+                );
+              })}
+            {products.filter((p) => p.compareAtPrice !== null && p.compareAtPrice > p.price).length ===
+              0 && (
+              <li className="text-mj-brown/60">No discounted products yet.</li>
+            )}
+          </ul>
+        </div>
       )}
 
       {editing !== null && (
@@ -401,28 +501,114 @@ export default function AdminProducts({ csrf }: { csrf: string }) {
                 required
                 className={inputClass}
               />
-            </label>
+            </label>              <div className="flex gap-2">
+              <div className="flex-1">
+                <label className="block">
+                  <span className="text-xs font-medium uppercase tracking-wide text-mj-brown">
+                    {form.discountMode ? "Discount %" : "MRP (₹)"}
+                  </span>
+                  {form.price && effectiveMrp(form) && (
+                    <span className={`ml-1 text-[11px] font-medium ${form.discountMode ? "text-mj-green" : effectiveMrp(form)! > Number(form.price) ? "text-mj-orange" : "text-mj-brown"}`}>
+                      {form.discountMode
+                        ? `≈ ₹${effectiveMrp(form)} MRP`
+                        : `(${Math.round((1 - Number(form.price) / effectiveMrp(form)!) * 100)}% off)`}
+                    </span>
+                  )}
+                  <input
+                    type={form.discountMode ? "text" : "number"}
+                    inputMode={form.discountMode ? "text" : "numeric"}
+                    min={form.discountMode ? undefined : 1}
+                    step={form.discountMode ? undefined : 1}
+                    value={form.compareAtPrice}
+                    onChange={(event) =>
+                      setForm((current) => ({
+                        ...current,
+                        compareAtPrice: event.target.value,
+                      }))
+                    }
+                    placeholder={form.discountMode ? "e.g. 20%" : "Leave empty for no discount"}
+                    className={inputClass}
+                  />
+                </label>
+              </div>
+              <button
+                type="button"
+                onClick={() => {
+                  setForm((current) => {
+                    const nextMode = !current.discountMode;
+                    // When switching to % mode and there is already an MRP,
+                    // seed the percentage from the existing discount.
+                    const nextCompareAtPrice:
+                      | string
+                      | number = nextMode
+                        ? current.compareAtPrice && current.price && Number(current.price) > 0 &&
+                          Number(current.compareAtPrice) > Number(current.price)
+                          ? String(
+                              Math.round(
+                                ((Number(current.compareAtPrice) - Number(current.price)) /
+                                  Number(current.compareAtPrice)) *
+                                  100
+                              )
+                            ) + "%"
+                          : current.compareAtPrice
+                        : current.compareAtPrice;
+                    return {
+                      ...current,
+                      discountMode: nextMode,
+                      compareAtPrice: nextCompareAtPrice,
+                    };
+                  });
+                }}
+                className={`shrink-0 rounded-full border px-3 py-2 text-xs font-medium hover:bg-mj-cream {
+                  form.discountMode
+                    ? "border-mj-green/40 bg-mj-green/5 text-mj-green"
+                    : "border-mj-beige text-mj-ink"
+                }`}
+                title={form.discountMode ? "Switch to MRP input" : "Switch to discount % input"}
+              >
+                {form.discountMode ? "MRP" : "%"}
+              </button>
+            </div>
 
-            <label className="block">
-              <span className="text-xs font-medium uppercase tracking-wide text-mj-brown">
-                MRP — struck through (₹, optional)
-              </span>
-              <input
-                type="number"
-                inputMode="numeric"
-                min={1}
-                step={1}
-                value={form.compareAtPrice}
-                onChange={(event) =>
-                  setForm((current) => ({
-                    ...current,
-                    compareAtPrice: event.target.value,
-                  }))
-                }
-                placeholder="Leave empty for no discount"
-                className={inputClass}
-              />
-            </label>
+            <div className="sm:col-span-2">
+              {preview.active ? (
+                <div className="mt-1.5 rounded-xl border border-mj-beige bg-mj-cream/60 p-4">
+                  <span className="text-xs font-medium uppercase tracking-wide text-mj-brown">
+                    Live discount preview
+                  </span>
+                  <div className="mt-2 flex flex-wrap items-baseline gap-3">
+                    <span className="text-2xl font-semibold text-mj-green">
+                      ₹{preview.price}
+                    </span>
+                    <span className="text-base text-mj-brown line-through">
+                      ₹{preview.mrp}
+                    </span>
+                    <span className="rounded-full bg-mj-orange/15 px-2.5 py-1 text-xs font-semibold text-mj-orange">
+                      You save ₹{preview.savings}
+                    </span>
+                    <span className="rounded-full bg-mj-orange px-2.5 py-1 text-xs font-semibold text-white">
+                      {preview.percent}% off
+                    </span>
+                  </div>
+                  <p className="mt-1.5 text-xs text-mj-brown">
+                    On the storefront this product will show the MRP struck
+                    through with the selling price on top and a &quot;You save&quot; pill.
+                  </p>
+                </div>
+              ) : form.price || form.compareAtPrice ? (
+                <p className="mt-1.5 text-xs text-mj-brown">
+                  {!form.price
+                    ? "Enter a selling price to see the preview."
+                    : !form.compareAtPrice
+                      ? form.discountMode
+                        ? "Enter a discount percentage to see the preview."
+                        : "Enter an MRP above the selling price to show a discount."
+                      : form.discountMode
+                        ? "Discount must be greater than 0% and less than 100%."
+                        : "MRP must be higher than the selling price to show a discount."}
+                </p>
+              ) : null}
+            </div>
 
             <label className="block">
               <span className="text-xs font-medium uppercase tracking-wide text-mj-brown">
@@ -569,7 +755,7 @@ export default function AdminProducts({ csrf }: { csrf: string }) {
           </div>
         ) : products.length === 0 ? (
           <p className="p-8 text-center text-sm text-mj-brown">
-            No products yet. Use “Add product” to create the first one.
+            No products yet. Use &quot;Add product&quot; to create the first one.
           </p>
         ) : (
           <ul className="divide-y divide-mj-beige">

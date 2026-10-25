@@ -157,7 +157,7 @@ export default async function ProductPage({
           </p>
 
           <dl className="mt-6 grid grid-cols-2 gap-3 text-sm">
-            <div className="rounded-2xl border border-mj-beige bg-white p-3.5">
+            <div className="rounded-2xl border border-mj-beige bg-white p-3">
               <dt className="text-xs text-mj-brown">Availability</dt>
               <dd
                 className={`mt-0.5 font-medium ${
@@ -175,19 +175,19 @@ export default async function ProductPage({
                     : "In stock"}
               </dd>
             </div>
-            <div className="rounded-2xl border border-mj-beige bg-white p-3.5">
+            <div className="rounded-2xl border border-mj-beige bg-white p-3">
               <dt className="text-xs text-mj-brown">Free delivery</dt>
               <dd className="mt-0.5 font-medium text-mj-ink">
                 Over ₹{FREE_SHIPPING_THRESHOLD}
               </dd>
             </div>
-            <div className="rounded-2xl border border-mj-beige bg-white p-3.5">
+            <div className="rounded-2xl border border-mj-beige bg-white p-3">
               <dt className="text-xs text-mj-brown">Shipping fee</dt>
               <dd className="mt-0.5 font-medium text-mj-ink">
                 ₹{SHIPPING_FEE} below that
               </dd>
             </div>
-            <div className="rounded-2xl border border-mj-beige bg-white p-3.5">
+            <div className="rounded-2xl border border-mj-beige bg-white p-3">
               <dt className="text-xs text-mj-brown">Shipped</dt>
               <dd className="mt-0.5 font-medium text-mj-ink">
                 Across India
@@ -224,7 +224,7 @@ export default async function ProductPage({
               ? `More ${CATEGORY_LABEL[product.category] ?? product.category} picks`
               : "More from the store"}
           </h2>
-          <div className="mt-5 grid grid-cols-2 gap-4 sm:grid-cols-3">
+          <div className="mt-5 grid grid-cols-2 gap-3 sm:grid-cols-3 md:grid-cols-4">
             {related.map((other) => (
               <Link
                 key={other.id}
@@ -236,15 +236,15 @@ export default async function ProductPage({
                     src={other.image}
                     alt={other.name}
                     fill
-                    sizes="(max-width: 640px) 50vw, 33vw"
+                    sizes="(max-width: 640px) 50vw, (max-width: 768px) 33vw, 25vw"
                     className="object-cover transition-transform duration-500 group-hover:scale-[1.03]"
                   />
                 </span>
-                <span className="flex items-center justify-between gap-2 p-3">
-                  <span className="truncate text-sm font-medium text-mj-ink">
+                <span className="flex items-center justify-between gap-2 p-2">
+                  <span className="truncate text-xs font-medium text-mj-ink">
                     {other.name}
                   </span>
-                  <span className="shrink-0 text-sm font-semibold text-mj-green">
+                  <span className="shrink-0 text-xs font-semibold text-mj-green">
                     ₹{other.price}
                   </span>
                 </span>

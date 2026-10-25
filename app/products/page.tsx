@@ -6,7 +6,7 @@ import {
   isAvailable,
   type Product,
 } from "@/lib/products";
-import AddToCart from "@/components/add-to-cart";
+import                      <AddToCart from "@/components/add-to-cart";
 import Reveal from "@/components/reveal";
 
 // Admin edits prices, labels and stock, so the catalog is read per request.
@@ -53,20 +53,18 @@ export default async function ProductsPage() {
         </Link>
       </Reveal>
 
-      <div className="mt-8 grid grid-cols-1 gap-6 sm:grid-cols-2 lg:grid-cols-3">
+      <div className="mt-8 grid grid-cols-1 gap-3 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5">
         {products.map((product, index) => (
-          <Reveal key={product.id} delay={index * 80}>
-            <article className="group flex h-full flex-col overflow-hidden rounded-2xl bg-white shadow-sm ring-1 ring-mj-beige transition-shadow hover:shadow-md">
-              <Link
-                href={`/products/${product.slug}`}
-                className="relative block aspect-square overflow-hidden"
-                aria-label={`View ${product.name}`}
-              >
+          <Reveal key={product.id} delay={index * 80}>              <article className="group flex h-full flex-col overflow-hidden rounded-2xl bg-white shadow-sm ring-1 ring-mj-beige transition-shadow hover:shadow-md">                                <Link
+                  href={`/products/${product.slug}`}
+                  className="relative block aspect-square overflow-hidden"
+                  aria-label={`View ${product.name}`}
+                >
                 <Image
                   src={product.image}
                   alt={product.name}
                   fill
-                  sizes="(max-width: 640px) 100vw, (max-width: 1024px) 50vw, 33vw"
+                  sizes="(max-width: 640px) 100vw, (max-width: 768px) 50vw, (max-width: 1024px) 33vw, 20vw"
                   className="object-cover transition-transform duration-500 group-hover:scale-[1.03]"
                 />
                 {!isAvailable(product) && (
@@ -83,11 +81,11 @@ export default async function ProductsPage() {
                     </span>
                   )}
                 {product.labels.length > 0 && (
-                  <span className="absolute left-3 top-3 flex flex-wrap gap-1.5">
+                  <span                <span className="absolute left-2 top-2 flex flex-wrap gap-1">
                     {product.labels.map((label) => (
                       <span
                         key={label}
-                        className="rounded-full bg-white/95 px-2.5 py-1 text-[11px] font-semibold text-mj-green shadow-sm"
+                        className="rounded-full bg-white/95 px-1.5 py-0.5 text-[10px] font-semibold text-mj-green shadow-sm"
                       >
                         {label}
                       </span>
@@ -95,60 +93,65 @@ export default async function ProductsPage() {
                   </span>
                 )}
                 {discountPercent(product) > 0 && (
-                  <span className="absolute right-3 top-3 rounded-full bg-mj-orange px-2.5 py-1 text-xs font-semibold text-white shadow-sm">
+                  <span    className="absolute right-2 top-2 rounded-full bg-mj-orange px-1.5 py-0.5 text-[10px] font-semibold text-white shadow-sm">
                     {discountPercent(product)}% off
                   </span>
                 )}
-              </Link>
-              <div className="flex flex-1 flex-col p-4">
-                <div className="flex items-start justify-between gap-2">
-                  <h2 className="text-lg font-medium text-mj-ink">
-                    <Link
-                      href={`/products/${product.slug}`}
-                      className="hover:text-mj-green"
-                    >
-                      {product.name}
-                    </Link>
-                  </h2>
-                  <span className="flex shrink-0 flex-col items-end gap-0.5">
-                    <span className="rounded-full bg-mj-cream px-2.5 py-1 text-sm font-semibold text-mj-green">
-                      ₹{product.price}
+              </Link>              <div className="flex flex-1 flex-col p-3">
+                  <div className="flex items-start justify-between gap-2">
+                    <h2 className="text-xs font-medium text-mj-ink leading-tight">
+                      <Link
+                        href={`/products/${product.slug}`}
+                        className="hover:text-mj-green"
+                      >
+                        {product.name}
+                      </Link>
+                    </h2>
+                    <span className="flex shrink-0 flex-col items-end gap-0.5">
+                      <span className="rounded-full bg-mj-cream px-2 py-0.5 text-xs font-semibold text-mj-green">
+                        ₹{product.price}
+                      </span>
+                      {product.compareAtPrice !== null &&
+                        product.compareAtPrice > product.price && (
+                          <>
+                            <span className="text-[10px] text-mj-brown line-through">
+                              ₹{product.compareAtPrice}
+                            </span>
+                            <span className="rounded-full bg-mj-orange/15 px-1.5 py-0.5 text-[10px] font-semibold text-mj-orange">
+                              Save ₹{product.compareAtPrice - product.price}
+                            </span>
+                          </>
+                        )}
                     </span>
-                    {product.compareAtPrice !== null &&
-                      product.compareAtPrice > product.price && (
-                        <span className="text-xs text-mj-brown line-through">
-                          ₹{product.compareAtPrice}
-                        </span>
-                      )}
-                  </span>
+                  </div>
+                  <p className="mt-1 flex-1 text-[11px] leading-snug text-mj-brown line-clamp-2">
+                    {product.description}
+                  </p>
+                  <div className="mt-2 flex flex-col gap-1">
+                    <AddToCart
+                      productId={product.id}
+                      inStock={isAvailable(product)}
+                      max={
+                        product.stock === null || product.stock === undefined
+                          ? undefined
+                          : product.stock
+                      }
+                      compact
+                    />
+                    {isAvailable(product) ? (
+                      <Link
+                        href="/cart"
+                        className="block text-center text-[11px] font-medium text-mj-green hover:underline"
+                      >
+                        View cart
+                      </Link>
+                    ) : (
+                      <span className="block text-center text-[11px] text-mj-brown">
+                        Currently unavailable
+                      </span>
+                    )}
+                  </div>
                 </div>
-              <p className="mt-1 flex-1 text-sm leading-relaxed text-mj-brown">
-                {product.description}
-              </p>
-              <div className="mt-4 flex flex-col gap-2">
-                <AddToCart
-                  productId={product.id}
-                  inStock={isAvailable(product)}
-                  max={
-                    product.stock === null || product.stock === undefined
-                      ? undefined
-                      : product.stock
-                  }
-                />
-                {isAvailable(product) ? (
-                  <Link
-                    href="/cart"
-                    className="mj-press rounded-full border border-mj-beige px-4 py-2 text-center text-sm font-medium text-mj-ink hover:bg-mj-cream"
-                  >
-                    View cart
-                  </Link>
-                ) : (
-                  <span className="rounded-full bg-mj-cream px-4 py-2 text-center text-sm text-mj-brown">
-                    Currently unavailable
-                  </span>
-                )}
-              </div>
-            </div>
             </article>
           </Reveal>
         ))}

@@ -148,7 +148,7 @@ export default async function Home() {
           </Link>
         </Reveal>
 
-        <div className="mt-7 grid grid-cols-1 gap-6 sm:grid-cols-2 lg:grid-cols-3">          {featured.map((product, index) => (
+                <div className="mt-7 grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">          {featured.map((product, index) => (
             <Reveal key={product.id} delay={index * 80}>
               <article className="group flex h-full flex-col overflow-hidden rounded-2xl bg-white shadow-sm ring-1 ring-mj-beige transition-shadow hover:shadow-md">
                 <Link
@@ -160,7 +160,7 @@ export default async function Home() {
                     src={product.image}
                     alt={product.name}
                     fill
-                    sizes="(max-width: 640px) 100vw, 33vw"
+                    sizes="(max-width: 640px) 100vw, (max-width: 768px) 50vw, (max-width: 1024px) 33vw, 20vw"
                     className="object-cover transition-transform duration-500 group-hover:scale-[1.03]"
                   />
                   {product.labels.length > 0 && (
@@ -181,9 +181,9 @@ export default async function Home() {
                     </span>
                   )}
                 </Link>
-                <div className="flex flex-1 flex-col p-4">
+                                <div className="flex flex-1 flex-col p-3">
                   <div className="flex items-start justify-between gap-2">
-                    <h3 className="text-lg font-medium text-mj-ink">
+                      <h3 className="text-base font-medium text-mj-ink">
                       <Link
                         href={`/products/${product.slug}`}
                         className="hover:text-mj-green"
@@ -203,10 +203,9 @@ export default async function Home() {
                         )}
                     </span>
                   </div>
-                <p className="mt-1 flex-1 text-sm leading-relaxed text-mj-brown">
+                  <p className="mt-1 flex-1 text-xs leading-snug text-mj-brown line-clamp-2">
                   {product.description}
-                </p>
-                <div className="mt-4">
+                </p>                  <div className="mt-3">
                   <AddToCart
                     productId={product.id}
                     inStock={isAvailable(product)}
@@ -232,7 +231,7 @@ export default async function Home() {
           <div className="mt-8 grid gap-6 md:grid-cols-3">
             {steps.map((step, index) => (
               <Reveal key={step.title} delay={index * 90}>
-                <div className="h-full rounded-2xl border border-mj-beige bg-white p-6">
+                <div className="h-full rounded-2xl border border-mj-beige bg-white p-4 md:p-6">
                 <span className="flex h-9 w-9 items-center justify-center rounded-full bg-mj-green/10 text-sm font-semibold text-mj-green">
                   {index + 1}
                 </span>
