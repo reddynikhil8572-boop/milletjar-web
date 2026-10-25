@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { z } from "zod";
-import { supabaseConfigured } from "@/lib/env";
+import { createClient } from "@supabase/supabase-js";
+import { env, supabaseConfigured } from "@/lib/env";
 import { guardPublic, jsonError, tooMany } from "@/lib/guard";
 import { clientIp, rateLimit } from "@/lib/ratelimit";
 import { createAdminSession } from "@/lib/admin";
@@ -46,10 +47,19 @@ export async function POST(req: Request) {
   const password = parsed.data.password;
 
   try {
-    const supabase = supabaseAdmin();
-    
+    // Verify the password on a short-lived client: a successful sign-in stores
+    // a session on the client it was made with, and supabase-js would then send
+    // that user's JWT instead of the service-role key on every later query.
+    const authClient = createClient(env.supabaseUrl, env.supabaseServiceRoleKey, {
+      auth: {
+        persistSession: false,
+        autoRefreshToken: false,
+        detectSessionInUrl: false,
+      },
+    });
+
     // Authenticate with Supabase Auth
-    const { data: authData, error: authError } = await supabase.auth.signInWithPassword({
+    const { data: authData, error: authError } = await authClient.auth.signInWithPassword({
       email,
       password,
     });
@@ -57,6 +67,8 @@ export async function POST(req: Request) {
     if (authError || !authData.user) {
       return jsonError(401, "Invalid credentials");
     }
+
+    const supabase = supabaseAdmin();
 
     // Check if user is authorized as admin in our users table
     const { data: existingUser } = await supabase

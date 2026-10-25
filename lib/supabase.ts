@@ -16,6 +16,13 @@ export function supabaseAdmin(): SupabaseClient {
   }
   if (!client) {
     client = createClient(env.supabaseUrl, env.supabaseServiceRoleKey, {
+      // Pin the service-role Authorization header. supabase-js normally swaps
+      // in the access token of any session that lives on this client, which
+      // would demote every query to the signed-in user - and with RLS enabled
+      // and no policies, such a user sees no rows and cannot insert.
+      global: {
+        headers: { Authorization: `Bearer ${env.supabaseServiceRoleKey}` },
+      },
       auth: {
         persistSession: false,
         autoRefreshToken: false,
