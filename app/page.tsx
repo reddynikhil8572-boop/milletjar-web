@@ -1,9 +1,22 @@
 import Image from "next/image";
 import Link from "next/link";
 import { SITE } from "@/lib/config";
-import { products } from "@/lib/products";
+import { getProducts, type Product } from "@/lib/products";
 import AddToCart from "@/components/add-to-cart";
 import Reveal from "@/components/reveal";
+
+// Admin edits prices, labels and stock, so the catalog is read per request.
+export const dynamic = "force-dynamic";
+
+/** Percentage saved, shown as an orange chip when MRP is above the price. */
+function discountPercent(product: Product): number {
+  if (!product.compareAtPrice || product.compareAtPrice <= product.price) {
+    return 0;
+  }
+  return Math.round(
+    (1 - product.price / product.compareAtPrice) * 100
+  );
+}
 
 const steps = [
   {
@@ -20,7 +33,8 @@ const steps = [
   },
 ];
 
-export default function Home() {
+export default async function Home() {
+  const products = await getProducts();
   const featured = products.slice(0, 3);
 
   return (
@@ -130,31 +144,55 @@ export default function Home() {
           </Link>
         </Reveal>
 
-        <div className="mt-7 grid grid-cols-1 gap-6 sm:grid-cols-2 lg:grid-cols-3">
-          {featured.map((product, index) => (
+        <div className="mt-7 grid grid-cols-1 gap-6 sm:grid-cols-2 lg:grid-cols-3">          {featured.map((product, index) => (
             <Reveal key={product.id} delay={index * 80}>
               <article className="group flex h-full flex-col overflow-hidden rounded-2xl bg-white shadow-sm ring-1 ring-mj-beige transition-shadow hover:shadow-md">
-              <Link
-                href="/products"
-                className="relative block aspect-square overflow-hidden"
-              >
-                <Image
-                  src={product.image}
-                  alt={product.name}
-                  fill
-                  sizes="(max-width: 640px) 100vw, 33vw"
-                  className="object-cover transition-transform duration-500 group-hover:scale-[1.03]"
-                />
-              </Link>
-              <div className="flex flex-1 flex-col p-4">
-                <div className="flex items-start justify-between gap-2">
-                  <h3 className="text-lg font-medium text-mj-ink">
-                    {product.name}
-                  </h3>
-                  <span className="shrink-0 rounded-full bg-mj-cream px-2.5 py-1 text-sm font-semibold text-mj-green">
-                    ₹{product.price}
-                  </span>
-                </div>
+                <Link
+                  href="/products"
+                  className="relative block aspect-square overflow-hidden"
+                >
+                  <Image
+                    src={product.image}
+                    alt={product.name}
+                    fill
+                    sizes="(max-width: 640px) 100vw, 33vw"
+                    className="object-cover transition-transform duration-500 group-hover:scale-[1.03]"
+                  />
+                  {product.labels.length > 0 && (
+                    <span className="absolute left-3 top-3 flex flex-wrap gap-1.5">
+                      {product.labels.map((label) => (
+                        <span
+                          key={label}
+                          className="rounded-full bg-white/95 px-2.5 py-1 text-[11px] font-semibold text-mj-green shadow-sm"
+                        >
+                          {label}
+                        </span>
+                      ))}
+                    </span>
+                  )}
+                  {discountPercent(product) > 0 && (
+                    <span className="absolute right-3 top-3 rounded-full bg-mj-orange px-2.5 py-1 text-xs font-semibold text-white shadow-sm">
+                      {discountPercent(product)}% off
+                    </span>
+                  )}
+                </Link>
+                <div className="flex flex-1 flex-col p-4">
+                  <div className="flex items-start justify-between gap-2">
+                    <h3 className="text-lg font-medium text-mj-ink">
+                      {product.name}
+                    </h3>
+                    <span className="flex shrink-0 flex-col items-end gap-0.5">
+                      <span className="rounded-full bg-mj-cream px-2.5 py-1 text-sm font-semibold text-mj-green">
+                        ₹{product.price}
+                      </span>
+                      {product.compareAtPrice !== null &&
+                        product.compareAtPrice > product.price && (
+                          <span className="text-xs text-mj-brown line-through">
+                            ₹{product.compareAtPrice}
+                          </span>
+                        )}
+                    </span>
+                  </div>
                 <p className="mt-1 flex-1 text-sm leading-relaxed text-mj-brown">
                   {product.description}
                 </p>

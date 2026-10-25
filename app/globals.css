@@ -115,6 +115,39 @@ button,
 }
 
 /* ------------------------------------------------------------------ */
+/* Scrolling announcement ticker (components/site-chrome.tsx)          */
+/* ------------------------------------------------------------------ */
+
+.mj-ticker {
+  overflow: hidden;
+  background: var(--mj-green);
+  color: #fff;
+}
+
+/* The track holds two identical copies of the message list; each item
+   carries its own right padding (not a flex gap) so translating by -50%
+   lands exactly on the seam and the loop is seamless. */
+.mj-ticker__track {
+  display: flex;
+  width: max-content;
+  padding-block: 0.45rem;
+  animation: mj-ticker-scroll 38s linear infinite;
+}
+
+.mj-ticker:hover .mj-ticker__track {
+  animation-play-state: paused;
+}
+
+@keyframes mj-ticker-scroll {
+  from {
+    transform: translateX(0);
+  }
+  to {
+    transform: translateX(-50%);
+  }
+}
+
+/* ------------------------------------------------------------------ */
 /* Scroll reveal (components/reveal.tsx)                               */
 /* ------------------------------------------------------------------ */
 
@@ -460,6 +493,9 @@ button,
   .mj-pop,
   .mj-action-bar,
   .mj-mobile-menu .mj-mobile-menu__list > * {
+    animation: none !important;
+  }
+  .mj-ticker__track {
     animation: none !important;
   }
 }

@@ -7,7 +7,7 @@ import {
   useMemo,
   useSyncExternalStore,
 } from "react";
-import { products, type Product } from "@/lib/products";
+import type { Product } from "@/lib/types";
 
 export type CartLine = { productId: string; qty: number };
 
@@ -39,14 +39,14 @@ const MAX_QTY = 20;
 
 const CartContext = createContext<CartContextValue | null>(null);
 
-function sanitize(input: unknown): CartLine[] {
+function sanitize(input: unknown, catalog: Product[]): CartLine[] {
   if (!Array.isArray(input)) return [];
   const merged = new Map<string, number>();
   for (const raw of input) {
     if (!raw || typeof raw !== "object") continue;
     const { productId, qty } = raw as Partial<CartLine>;
     if (typeof productId !== "string") continue;
-    if (!products.some((p) => p.id === productId)) continue;
+    if (!catalog.some((p) => p.id === productId)) continue;
     const value = Math.floor(Number(qty));
     if (!Number.isFinite(value) || value <= 0) continue;
     merged.set(productId, Math.min((merged.get(productId) || 0) + value, MAX_QTY));
@@ -62,8 +62,9 @@ function sanitize(input: unknown): CartLine[] {
 const EMPTY: CartLine[] = [];
 let snapshot: CartLine[] = EMPTY;
 let snapshotRaw: string | null | undefined;
+let snapshotCatalog: Product[] | null = null;
 
-function readSnapshot(): CartLine[] {
+function readSnapshot(catalog: Product[]): CartLine[] {
   if (typeof window === "undefined") return EMPTY;
   let raw: string | null = null;
   try {
@@ -71,10 +72,11 @@ function readSnapshot(): CartLine[] {
   } catch {
     raw = null;
   }
-  if (raw === snapshotRaw) return snapshot;
+  if (raw === snapshotRaw && catalog === snapshotCatalog) return snapshot;
   snapshotRaw = raw;
+  snapshotCatalog = catalog;
   try {
-    snapshot = raw ? sanitize(JSON.parse(raw)) : EMPTY;
+    snapshot = raw ? sanitize(JSON.parse(raw), catalog) : EMPTY;
   } catch {
     snapshot = EMPTY;
   }
@@ -106,8 +108,19 @@ function subscribeHydration(): () => void {
   return () => {};
 }
 
-export function CartProvider({ children }: { children: React.ReactNode }) {
-  const lines = useSyncExternalStore(subscribe, readSnapshot, () => EMPTY);
+export function CartProvider({
+  products,
+  children,
+}: {
+  /** Live catalog from the server layout; drives names, prices and badges. */
+  products: Product[];
+  children: React.ReactNode;
+}) {
+  const lines = useSyncExternalStore(
+    subscribe,
+    () => readSnapshot(products),
+    () => EMPTY
+  );
   // Server snapshot is false, client snapshot is true: flips after hydration.
   const ready = useSyncExternalStore(
     subscribeHydration,
@@ -116,7 +129,7 @@ export function CartProvider({ children }: { children: React.ReactNode }) {
   );
 
   const add = useCallback((productId: string, qty = 1) => {
-    const current = readSnapshot();
+    const current = readSnapshot(products);
     const existing = current.find((line) => line.productId === productId);
     const next = existing
       ? current.map((line) =>
@@ -126,24 +139,25 @@ export function CartProvider({ children }: { children: React.ReactNode }) {
         )
       : [...current, { productId, qty: Math.min(Math.max(qty, 1), MAX_QTY) }];
     writeSnapshot(next);
-  }, []);
+  }, [products]);
 
   const setQty = useCallback((productId: string, qty: number) => {
-    const current = readSnapshot();
+    const current = readSnapshot(products);
     const next =
       qty <= 0
-        ? current.filter((line) => line.productId !== productId)
-        : current.map((line) =>
-            line.productId === productId
-              ? { ...line, qty: Math.min(Math.floor(qty), MAX_QTY) }
-              : line
-          );
+        ? current.filter((line) => line.productId !== productId)      : current.map((line) =>
+          line.productId === productId
+            ? { ...line, qty: Math.min(Math.floor(qty), MAX_QTY) }
+            : line
+        );
     writeSnapshot(next);
-  }, []);
+  }, [products]);
 
   const remove = useCallback((productId: string) => {
-    writeSnapshot(readSnapshot().filter((line) => line.productId !== productId));
-  }, []);
+    writeSnapshot(
+      readSnapshot(products).filter((line) => line.productId !== productId)
+    );
+  }, [products]);
 
   const clear = useCallback(() => writeSnapshot(EMPTY), []);
 
@@ -174,7 +188,7 @@ export function CartProvider({ children }: { children: React.ReactNode }) {
       remove,
       clear,
     };
-  }, [lines, ready, add, setQty, remove, clear]);
+  }, [lines, products, ready, add, setQty, remove, clear]);
 
   return <CartContext.Provider value={value}>{children}</CartContext.Provider>;
 }

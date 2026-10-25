@@ -90,6 +90,12 @@ export default function CartPage() {
                     <h2 className="font-medium text-mj-ink">{product.name}</h2>
                     <p className="mt-0.5 text-sm text-mj-brown">
                       ₹{product.price} each
+                      {product.compareAtPrice !== null &&
+                        product.compareAtPrice > product.price && (
+                          <span className="ml-1.5 line-through">
+                            ₹{product.compareAtPrice}
+                          </span>
+                        )}
                     </p>
                   </div>
                   <span className="font-semibold text-mj-green">

@@ -62,7 +62,7 @@ export async function POST(req: Request) {
   }
 
   // Prices always come from the server catalog, never from the client.
-  const priced = priceCart(parsed.data.items);
+  const priced = await priceCart(parsed.data.items);
   if (priced.items.length === 0) {
     return jsonError(400, "No valid products selected");
   }

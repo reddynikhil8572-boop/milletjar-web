@@ -1,4 +1,4 @@
-import { products } from "./products";
+import { getProducts } from "./products";
 import type { OrderItem } from "./types";
 
 export const FREE_SHIPPING_THRESHOLD = 499;
@@ -18,7 +18,8 @@ export type PricedCart = {
  * Recomputes the cart from the server-side catalog. Client-supplied prices
  * are never trusted, which is what makes the payment amount safe.
  */
-export function priceCart(input: CartInput): PricedCart {
+export async function priceCart(input: CartInput): Promise<PricedCart> {
+  const products = await getProducts();
   const merged = new Map<string, number>();
   for (const line of input) {
     const qty = Math.floor(line.qty);

@@ -24,6 +24,8 @@ function emptyDB(): DB {
     orders: [],
     audit: [],
     savedAddresses: [],
+    products: [],
+    settings: [],
   };
 }
 
@@ -61,6 +63,19 @@ export async function readDB<T>(fn: (db: DB) => T | Promise<T>): Promise<T> {
   }
   const db = await load();
   return fn(db);
+}
+
+/**
+ * Reads a single table instead of the whole snapshot. Used on hot paths
+ * (storefront pages) where only the catalog or settings are needed.
+ */
+export async function readTable<K extends keyof DB>(table: K): Promise<DB[K]> {
+  if (supabaseConfigured()) {
+    const store = await supabaseStore();
+    return store.readTable(table);
+  }
+  const db = await load();
+  return db[table];
 }
 
 /** Serialized read-modify-write. Mutations are persisted atomically. */

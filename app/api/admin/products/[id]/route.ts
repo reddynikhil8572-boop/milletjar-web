@@ -1,0 +1,112 @@
+import { NextResponse } from "next/server";
+import { randomToken } from "@/lib/crypto";
+import { guardAdmin, jsonError } from "@/lib/guard";
+import { productPatchSchema } from "@/lib/product-schema";
+import { writeDB } from "@/lib/store";
+
+export const runtime = "nodejs";
+export const dynamic = "force-dynamic";
+
+export async function PATCH(
+  req: Request,
+  ctx: { params: Promise<{ id: string }> }
+) {
+  const guard = await guardAdmin(req, {
+    key: "admin:products:update",
+    csrf: true,
+    limit: 60,
+  });
+  if (!guard.ok) return guard.response;
+
+  const { id } = await ctx.params;
+
+  let body: unknown;
+  try {
+    body = await req.json();
+  } catch {
+    return jsonError(400, "Invalid JSON body");
+  }
+
+  const parsed = productPatchSchema.safeParse(body);
+  if (!parsed.success) {
+    return jsonError(400, parsed.error.issues[0]?.message || "Invalid update");
+  }
+  const patch = parsed.data;
+
+  try {
+    const result = await writeDB((db) => {
+      const product = db.products.find((p) => p.id === id);
+      if (!product) return { found: false } as const;
+
+      if (patch.slug !== undefined && patch.slug !== product.slug) {
+        const taken = db.products.some(
+          (p) => p.id !== id && p.slug === patch.slug
+        );
+        if (taken) return { conflict: true } as const;
+      }
+
+      for (const [key, value] of Object.entries(patch)) {
+        if (value === undefined) continue;
+        (product as unknown as Record<string, unknown>)[key] = value;
+      }
+      product.updatedAt = Date.now();
+
+      db.audit.push({
+        id: `aud_${randomToken(8)}`,
+        actor: "admin",
+        actorId: guard.email,
+        action: "product.update",
+        target: product.id,
+        createdAt: Date.now(),
+      });
+      return { found: true, conflict: false, product } as const;
+    });
+
+    if ("conflict" in result && result.conflict) {
+      return jsonError(409, "A product with that slug already exists");
+    }
+    if (!result.found) return jsonError(404, "Product not found");
+    return NextResponse.json(
+      { ok: true, product: result.product },
+      { status: 200 }
+    );
+  } catch {
+    return jsonError(500, "Could not update the product");
+  }
+}
+
+export async function DELETE(
+  req: Request,
+  ctx: { params: Promise<{ id: string }> }
+) {
+  const guard = await guardAdmin(req, {
+    key: "admin:products:delete",
+    csrf: true,
+    limit: 30,
+  });
+  if (!guard.ok) return guard.response;
+
+  const { id } = await ctx.params;
+
+  try {
+    const removed = await writeDB((db) => {
+      const product = db.products.find((p) => p.id === id);
+      if (!product) return null;
+      db.products = db.products.filter((p) => p.id !== id);
+      db.audit.push({
+        id: `aud_${randomToken(8)}`,
+        actor: "admin",
+        actorId: guard.email,
+        action: "product.delete",
+        target: id,
+        createdAt: Date.now(),
+      });
+      return product;
+    });
+
+    if (!removed) return jsonError(404, "Product not found");
+    return NextResponse.json({ ok: true }, { status: 200 });
+  } catch {
+    return jsonError(500, "Could not delete the product");
+  }
+}

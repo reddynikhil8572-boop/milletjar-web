@@ -7,13 +7,20 @@ import {
   SiteFooter,
   SiteHeader,
   SiteMobileBar,
+  SiteTicker,
 } from "@/components/site-chrome";
+import { getProducts } from "@/lib/products";
+import { getAnnouncements } from "@/lib/announcements";
 
 const inter = Inter({
   variable: "--font-inter",
   subsets: ["latin"],
   display: "swap",
 });
+
+// The catalog and the ticker are admin-managed, so every storefront render
+// reads them fresh instead of baking them into the build.
+export const dynamic = "force-dynamic";
 
 export const metadata: Metadata = {
   title: "Millet Jar | Fresh from Farm to Your Family",
@@ -49,14 +56,22 @@ export const viewport: Viewport = {
   themeColor: "#1F7C3F",
 };
 
-export default function RootLayout({
+export default async function RootLayout({
   children,
 }: Readonly<{ children: React.ReactNode }>) {
+  const [products, announcements] = await Promise.all([
+    getProducts(),
+    getAnnouncements(),
+  ]);
+
   return (
     <html lang="en">
       <body className={`${inter.variable} antialiased`}>
-        <CartProvider>
+        <CartProvider products={products}>
           <BrandIntro />
+          <SiteTicker
+            messages={announcements.enabled ? announcements.messages : []}
+          />
           <SiteHeader />
           <main className="min-h-[70vh]">{children}</main>
           <SiteFooter />

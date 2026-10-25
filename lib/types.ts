@@ -1,5 +1,38 @@
 export type UserRole = "customer";
 
+export type ProductCategory = "millet" | "mix" | "snack";
+
+/** A catalog entry. Admin-managed: created/edited from /admin. */
+export type Product = {
+  id: string;
+  name: string;
+  slug: string;
+  description: string;
+  /** Selling price in INR. This is what the customer pays. */
+  price: number;
+  /** Original MRP. Shown struck through, with an auto "% off", when higher than price. */
+  compareAtPrice: number | null;
+  /** Path under /public, or a public Supabase Storage URL. */
+  image: string;
+  category: ProductCategory;
+  /** Short badges on the card, e.g. "New", "Bestseller". */
+  labels: string[];
+  inStock: boolean;
+  createdAt: number;
+  updatedAt: number;
+};
+
+export type Announcement = { id: string; text: string; href?: string };
+
+/** The scrolling offer ticker shown at the top of the storefront. */
+export type AnnouncementConfig = {
+  enabled: boolean;
+  messages: Announcement[];
+};
+
+/** Generic key/value row; `value` is a jsonb column in Supabase. */
+export type Setting = { key: string; value: unknown };
+
 export type User = {
   id: string;
   email: string;
@@ -116,4 +149,6 @@ export type DB = {
   orders: Order[];
   audit: AuditEvent[];
   savedAddresses: SavedAddress[];
+  products: Product[];
+  settings: Setting[];
 };

@@ -56,6 +56,8 @@ const snapshot = {
   orders: [],
   audit: [],
   savedAddresses: [],
+  products: [],
+  settings: [],
   ...parsed,
 };
 
@@ -75,6 +77,8 @@ console.log(`  users:           ${snapshot.users.length}`);
 console.log(`  orders:          ${snapshot.orders.length}`);
 console.log(`  sessions:        ${snapshot.sessions.length}`);
 console.log(`  saved addresses: ${snapshot.savedAddresses.length}`);
+console.log(`  products:        ${snapshot.products.length}`);
+console.log(`  settings:        ${snapshot.settings.length}`);
 console.log(
   "Note: remote tables now mirror this file exactly (rows not in the file were removed)."
 );

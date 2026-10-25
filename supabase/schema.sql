@@ -1,5 +1,8 @@
 -- Millet Jar — Supabase schema
--- Run once in: Supabase Dashboard → SQL Editor → New query → paste → Run.
+-- Run in: Supabase Dashboard → SQL Editor → New query → paste → Run.
+--
+-- Safe to re-run: everything here is idempotent, so existing databases pick up
+-- new tables (products, settings) and the updated mj_apply_snapshot().
 --
 -- Notes:
 -- * Columns are camelCase (quoted) so PostgREST rows map 1:1 to the app's
@@ -85,6 +88,29 @@ create table if not exists saved_addresses (
   "createdAt" bigint not null
 );
 
+-- Catalog managed from /admin. `price` is what the customer pays;
+-- `compareAtPrice` is the MRP shown struck through (null = no discount).
+create table if not exists products (
+  "id" text primary key,
+  "name" text not null,
+  "slug" text not null unique,
+  "description" text not null default '',
+  "price" integer not null,
+  "compareAtPrice" integer,
+  "image" text not null,
+  "category" text not null default 'millet',
+  "labels" jsonb not null default '[]'::jsonb,
+  "inStock" boolean not null default true,
+  "createdAt" bigint not null,
+  "updatedAt" bigint not null
+);
+
+-- Generic key/value rows (settings keys: announcements, catalogSeeded).
+create table if not exists settings (
+  "key" text primary key,
+  "value" jsonb
+);
+
 create index if not exists user_sessions_user_idx on user_sessions ("userId");
 create index if not exists orders_user_idx on orders ("userId");
 create index if not exists saved_addresses_user_idx on saved_addresses ("userId");
@@ -96,6 +122,8 @@ alter table oauth_states enable row level security;
 alter table orders enable row level security;
 alter table audit enable row level security;
 alter table saved_addresses enable row level security;
+alter table products enable row level security;
+alter table settings enable row level security;
 
 -- Atomic snapshot write used by lib/supabase-store.ts.
 create or replace function mj_apply_snapshot(data jsonb)
@@ -186,6 +214,35 @@ begin
       "actor"=excluded."actor", "actorId"=excluded."actorId", "action"=excluded."action",
       "target"=excluded."target", "ip"=excluded."ip", "createdAt"=excluded."createdAt";
 
+  -- products
+  delete from products
+    where "id" not in (
+      select value->>'id' from jsonb_array_elements(coalesce(data->'products', '[]'::jsonb)) where value ? 'id'
+    );
+  insert into products ("id","name","slug","description","price","compareAtPrice","image","category","labels","inStock","createdAt","updatedAt")
+    select value->>'id', value->>'name', value->>'slug', coalesce(value->>'description', ''),
+           (value->>'price')::integer, (value->>'compareAtPrice')::integer,
+           value->>'image', coalesce(value->>'category', 'millet'),
+           coalesce(value->'labels', '[]'::jsonb),
+           coalesce((value->>'inStock')::boolean, true),
+           (value->>'createdAt')::bigint, (value->>'updatedAt')::bigint
+    from jsonb_array_elements(coalesce(data->'products', '[]'::jsonb))
+    on conflict ("id") do update set
+      "name"=excluded."name", "slug"=excluded."slug", "description"=excluded."description",
+      "price"=excluded."price", "compareAtPrice"=excluded."compareAtPrice",
+      "image"=excluded."image", "category"=excluded."category", "labels"=excluded."labels",
+      "inStock"=excluded."inStock", "updatedAt"=excluded."updatedAt";
+
+  -- settings
+  delete from settings
+    where "key" not in (
+      select value->>'key' from jsonb_array_elements(coalesce(data->'settings', '[]'::jsonb)) where value ? 'key'
+    );
+  insert into settings ("key","value")
+    select value->>'key', value->'value'
+    from jsonb_array_elements(coalesce(data->'settings', '[]'::jsonb))
+    on conflict ("key") do update set "value"=excluded."value";
+
   -- saved_addresses
   delete from saved_addresses
     where "id" not in (
@@ -201,6 +258,18 @@ begin
       "slot"=excluded."slot", "createdAt"=excluded."createdAt";
 end;
 $$;
+
+-- Storage bucket for product images uploaded from /admin.
+-- storage.buckets is an ordinary table, so this is safe to run from SQL Editor.
+insert into storage.buckets (id, name, public, file_size_limit, allowed_mime_types)
+values (
+  'product-images',
+  'Product images',
+  true,
+  2097152, -- 2 MB
+  array['image/jpeg', 'image/png', 'image/webp', 'image/avif', 'image/gif']
+)
+on conflict (id) do nothing;
 
 revoke execute on function mj_apply_snapshot(jsonb) from public;
 revoke execute on function mj_apply_snapshot(jsonb) from anon;
