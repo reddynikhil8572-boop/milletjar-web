@@ -52,7 +52,11 @@ export default async function ProductsPage() {
         {products.map((product, index) => (
           <Reveal key={product.id} delay={index * 80}>
             <article className="group flex h-full flex-col overflow-hidden rounded-2xl bg-white shadow-sm ring-1 ring-mj-beige transition-shadow hover:shadow-md">
-              <div className="relative aspect-square overflow-hidden">
+              <Link
+                href={`/products/${product.slug}`}
+                className="relative block aspect-square overflow-hidden"
+                aria-label={`View ${product.name}`}
+              >
                 <Image
                   src={product.image}
                   alt={product.name}
@@ -82,11 +86,16 @@ export default async function ProductsPage() {
                     {discountPercent(product)}% off
                   </span>
                 )}
-              </div>
+              </Link>
               <div className="flex flex-1 flex-col p-4">
                 <div className="flex items-start justify-between gap-2">
                   <h2 className="text-lg font-medium text-mj-ink">
-                    {product.name}
+                    <Link
+                      href={`/products/${product.slug}`}
+                      className="hover:text-mj-green"
+                    >
+                      {product.name}
+                    </Link>
                   </h2>
                   <span className="flex shrink-0 flex-col items-end gap-0.5">
                     <span className="rounded-full bg-mj-cream px-2.5 py-1 text-sm font-semibold text-mj-green">
@@ -104,16 +113,14 @@ export default async function ProductsPage() {
                 {product.description}
               </p>
               <div className="mt-4 flex flex-col gap-2">
+                <AddToCart productId={product.id} inStock={product.inStock} />
                 {product.inStock ? (
-                  <>
-                    <AddToCart productId={product.id} />
-                    <Link
-                      href="/cart"
-                      className="mj-press rounded-full border border-mj-beige px-4 py-2 text-center text-sm font-medium text-mj-ink hover:bg-mj-cream"
-                    >
-                      View cart
-                    </Link>
-                  </>
+                  <Link
+                    href="/cart"
+                    className="mj-press rounded-full border border-mj-beige px-4 py-2 text-center text-sm font-medium text-mj-ink hover:bg-mj-cream"
+                  >
+                    View cart
+                  </Link>
                 ) : (
                   <span className="rounded-full bg-mj-cream px-4 py-2 text-center text-sm text-mj-brown">
                     Currently unavailable

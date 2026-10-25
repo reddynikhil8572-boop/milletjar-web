@@ -1,70 +1,100 @@
 "use client";
 
-import { useState } from "react";
 import { useCart } from "./cart-provider";
 
+const MAX_QTY = 20;
+
+/**
+ * Card buy control: one tap adds a single unit, then the same slot becomes a
+ * quantity stepper (− qty +) so the quantity can be adjusted in place.
+ * Pressing − at 1 empties the cart line and the control returns to "Buy".
+ */
 export default function AddToCart({
   productId,
-  compact = false,
+  inStock = true,
+  wide = false,
 }: {
   productId: string;
-  compact?: boolean;
+  inStock?: boolean;
+  /** Larger control for the product detail page. */
+  wide?: boolean;
 }) {
-  const { add } = useCart();
-  const [added, setAdded] = useState(false);
+  const { lines, add, setQty } = useCart();
+  const qty = lines.find((line) => line.productId === productId)?.qty ?? 0;
 
-  function handleAdd() {
-    add(productId, 1);
-    setAdded(true);
-    window.setTimeout(() => setAdded(false), 1400);
+  const sizing = wide
+    ? "px-6 py-3.5 text-base"
+    : "px-5 py-2.5 text-sm";
+
+  if (!inStock) {
+    return (
+      <span
+        className={`inline-flex w-full items-center justify-center rounded-full bg-mj-cream font-medium text-mj-brown ${sizing}`}
+      >
+        Currently unavailable
+      </span>
+    );
+  }
+
+  if (qty === 0) {
+    return (
+      <button
+        type="button"
+        onClick={() => add(productId, 1)}
+        className={`mj-press inline-flex w-full items-center justify-center gap-2 rounded-full bg-mj-green font-medium text-white hover:bg-mj-green-700 ${sizing}`}
+      >
+        <svg
+          width="16"
+          height="16"
+          viewBox="0 0 24 24"
+          fill="none"
+          stroke="currentColor"
+          strokeWidth="2.5"
+          strokeLinecap="round"
+          strokeLinejoin="round"
+          aria-hidden="true"
+        >
+          <path d="M12 5v14M5 12h14" />
+        </svg>
+        Buy
+      </button>
+    );
   }
 
   return (
-    <button
-      type="button"
-      onClick={handleAdd}        className={`mj-press inline-flex items-center justify-center gap-2 rounded-full font-medium ${
-        compact ? "px-4 py-2 text-sm" : "w-full px-5 py-2.5 text-sm"
-      } ${
-        added
-          ? "mj-pop bg-mj-orange text-white"
-          : "bg-mj-green text-white hover:bg-mj-green-700"
-      }`}
+    <div
+      className={`mj-pop inline-flex w-full items-center justify-between rounded-full bg-mj-green text-white ${wide ? "px-2 py-1.5" : "px-1.5 py-1"}`}
     >
-      {added ? (
-        <>
-          <svg
-            width="16"
-            height="16"
-            viewBox="0 0 24 24"
-            fill="none"
-            stroke="currentColor"
-            strokeWidth="2.5"
-            strokeLinecap="round"
-            strokeLinejoin="round"
-            aria-hidden="true"
-          >
-            <path d="M20 6 9 17l-5-5" />
-          </svg>
-          Added
-        </>
-      ) : (
-        <>
-          <svg
-            width="16"
-            height="16"
-            viewBox="0 0 24 24"
-            fill="none"
-            stroke="currentColor"
-            strokeWidth="2"
-            strokeLinecap="round"
-            strokeLinejoin="round"
-            aria-hidden="true"
-          >
-            <path d="M12 5v14M5 12h14" />
-          </svg>
-          Add to cart
-        </>
-      )}
-    </button>
+      <button
+        type="button"
+        aria-label="Decrease quantity"
+        onClick={() => setQty(productId, qty - 1)}
+        className={`flex items-center justify-center rounded-full bg-white/15 font-semibold hover:bg-white/25 ${
+          wide ? "h-11 w-11 text-xl" : "h-9 w-9 text-lg"
+        }`}
+      >
+        −
+      </button>
+      <span
+        className={`text-center font-semibold ${
+          wide ? "min-w-10 text-lg" : "min-w-8 text-sm"
+        }`}
+        aria-live="polite"
+        title={qty >= MAX_QTY ? `Maximum ${MAX_QTY} per order` : `${qty} in cart`}
+      >
+        {qty}
+      </span>
+      <button
+        type="button"
+        aria-label="Increase quantity"
+        disabled={qty >= MAX_QTY}
+        onClick={() => add(productId, 1)}
+        className={`flex items-center justify-center rounded-full bg-white/15 font-semibold hover:bg-white/25 disabled:opacity-40 ${
+          wide ? "h-11 w-11 text-xl" : "h-9 w-9 text-lg"
+        }`}
+      >
+        +
+      </button>
+    </div>
   );
 }

@@ -148,8 +148,9 @@ export default async function Home() {
             <Reveal key={product.id} delay={index * 80}>
               <article className="group flex h-full flex-col overflow-hidden rounded-2xl bg-white shadow-sm ring-1 ring-mj-beige transition-shadow hover:shadow-md">
                 <Link
-                  href="/products"
+                  href={`/products/${product.slug}`}
                   className="relative block aspect-square overflow-hidden"
+                  aria-label={`View ${product.name}`}
                 >
                   <Image
                     src={product.image}
@@ -179,7 +180,12 @@ export default async function Home() {
                 <div className="flex flex-1 flex-col p-4">
                   <div className="flex items-start justify-between gap-2">
                     <h3 className="text-lg font-medium text-mj-ink">
-                      {product.name}
+                      <Link
+                        href={`/products/${product.slug}`}
+                        className="hover:text-mj-green"
+                      >
+                        {product.name}
+                      </Link>
                     </h3>
                     <span className="flex shrink-0 flex-col items-end gap-0.5">
                       <span className="rounded-full bg-mj-cream px-2.5 py-1 text-sm font-semibold text-mj-green">
@@ -197,7 +203,7 @@ export default async function Home() {
                   {product.description}
                 </p>
                 <div className="mt-4">
-                  <AddToCart productId={product.id} />
+                  <AddToCart productId={product.id} inStock={product.inStock} />
                 </div>
               </div>
               </article>
