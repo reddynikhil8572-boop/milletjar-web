@@ -14,6 +14,8 @@ type AdminProduct = {
   category: "millet" | "mix" | "snack";
   labels: string[];
   inStock: boolean;
+  /** null = quantity not tracked. */
+  stock?: number | null;
   createdAt: number;
   updatedAt: number;
 };
@@ -34,6 +36,8 @@ type FormState = {
   category: "millet" | "mix" | "snack";
   labels: string;
   inStock: boolean;
+  /** Empty string = not tracked. */
+  stock: string;
 };
 
 const EMPTY_FORM: FormState = {
@@ -46,6 +50,7 @@ const EMPTY_FORM: FormState = {
   category: "millet",
   labels: "",
   inStock: true,
+  stock: "",
 };
 
 function toForm(product: AdminProduct): FormState {
@@ -59,6 +64,7 @@ function toForm(product: AdminProduct): FormState {
     category: product.category,
     labels: product.labels.join(", "),
     inStock: product.inStock,
+    stock: product.stock === null || product.stock === undefined ? "" : String(product.stock),
   };
 }
 
@@ -190,6 +196,12 @@ export default function AdminProducts({ csrf }: { csrf: string }) {
       setSaving(false);
       return;
     }
+    const stock = form.stock.trim() === "" ? null : Number(form.stock);
+    if (stock !== null && (!Number.isInteger(stock) || stock < 0)) {
+      setError("Stock must be a whole number, or left empty to not track it.");
+      setSaving(false);
+      return;
+    }
 
     const payload = {
       name: form.name.trim(),
@@ -201,6 +213,7 @@ export default function AdminProducts({ csrf }: { csrf: string }) {
       category: form.category,
       labels,
       inStock: form.inStock,
+      stock,
     };
 
     try {
@@ -411,6 +424,27 @@ export default function AdminProducts({ csrf }: { csrf: string }) {
               />
             </label>
 
+            <label className="block">
+              <span className="text-xs font-medium uppercase tracking-wide text-mj-brown">
+                Remaining stock (optional)
+              </span>
+              <input
+                type="number"
+                inputMode="numeric"
+                min={0}
+                step={1}
+                value={form.stock}
+                onChange={(event) =>
+                  setForm((current) => ({
+                    ...current,
+                    stock: event.target.value,
+                  }))
+                }
+                placeholder="Empty = not tracked"
+                className={inputClass}
+              />
+            </label>
+
             <label className="block sm:col-span-2">
               <span className="text-xs font-medium uppercase tracking-wide text-mj-brown">
                 Description
@@ -582,17 +616,34 @@ export default function AdminProducts({ csrf }: { csrf: string }) {
                 </div>
 
                 <div className="flex items-center gap-3">
-                  <div className="text-right">
-                    <div className="font-semibold text-mj-ink">
-                      ₹{product.price}
-                    </div>
-                    {product.compareAtPrice !== null &&
-                      product.compareAtPrice > product.price && (
-                        <div className="text-xs text-mj-brown line-through">
-                          ₹{product.compareAtPrice}
-                        </div>
-                      )}
+                <div className="text-right">
+                  <div className="font-semibold text-mj-ink">
+                    ₹{product.price}
                   </div>
+                  {product.compareAtPrice !== null &&
+                    product.compareAtPrice > product.price && (
+                      <div className="text-xs text-mj-brown line-through">
+                        ₹{product.compareAtPrice}
+                      </div>
+                    )}
+                  <div
+                    className={`text-[11px] ${
+                      product.stock !== null &&
+                      product.stock !== undefined &&
+                      product.stock <= 5
+                        ? product.stock === 0
+                          ? "font-semibold text-red-600"
+                          : "font-semibold text-amber-600"
+                        : "text-mj-brown"
+                    }`}
+                  >
+                    {product.stock === null || product.stock === undefined
+                      ? "stock not tracked"
+                      : product.stock === 0
+                        ? "sold out"
+                        : `${product.stock} left`}
+                  </div>
+                </div>
                   <div className="flex gap-2">
                     <button
                       type="button"

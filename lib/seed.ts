@@ -78,6 +78,7 @@ export function seedProducts(): Product[] {
     ...product,
     compareAtPrice: null,
     inStock: true,
+    stock: null,
     createdAt: now + index,
     updatedAt: now + index,
   }));

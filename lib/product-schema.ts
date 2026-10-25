@@ -32,6 +32,8 @@ export const productSchema = z.object({
   category: z.enum(["millet", "mix", "snack"]),
   labels: z.array(z.string().trim().min(1).max(30)).max(6).default([]),
   inStock: z.boolean().default(true),
+  /** Remaining units; null = quantity not tracked (always available). */
+  stock: z.number().int().min(0).max(1_000_000).nullable().default(null),
 });
 
 export const productPatchSchema = productSchema

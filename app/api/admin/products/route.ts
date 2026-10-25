@@ -55,6 +55,7 @@ export async function POST(req: Request) {
         category: input.category,
         labels: input.labels,
         inStock: input.inStock,
+        stock: input.stock,
         createdAt: now,
         updatedAt: now,
       };
@@ -76,7 +77,8 @@ export async function POST(req: Request) {
     // serving the seed catalog; that same tolerance would turn a create into
     // a silent no-op, so confirm the row actually landed.
     const saved = await readTable("products");
-    if (!saved.some((p) => p.id === created.id)) {
+    const landed = saved.find((p) => p.id === created.id);
+    if (!landed || (input.stock !== null && landed.stock !== input.stock)) {
       return jsonError(
         500,
         "Catalog table missing: run supabase/schema.sql in the Supabase SQL Editor, then retry."

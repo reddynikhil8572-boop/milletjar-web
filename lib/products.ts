@@ -4,6 +4,17 @@ import type { Product } from "./types";
 
 export type { Product };
 
+/** At or below this tracked quantity a product is flagged as running low. */
+export const LOW_STOCK_THRESHOLD = 5;
+
+/**
+ * Whether the customer can buy it right now: the admin's stock toggle must be
+ * on, and a tracked quantity (when set) must be above zero.
+ */
+export function isAvailable(product: Product): boolean {
+  return product.inStock && (product.stock ?? 1) > 0;
+}
+
 /**
  * Live catalog. Read from the store on every call — Supabase in production,
  * `.data/db.json` in development — so admin edits show up immediately.

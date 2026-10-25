@@ -18,6 +18,11 @@ export type Product = {
   /** Short badges on the card, e.g. "New", "Bestseller". */
   labels: string[];
   inStock: boolean;
+  /**
+   * Remaining units. Null = not tracked (always available while inStock),
+   * 0 = sold out, 1..LOW_STOCK_THRESHOLD = shown with a low-stock badge.
+   */
+  stock: number | null;
   createdAt: number;
   updatedAt: number;
 };

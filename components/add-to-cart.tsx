@@ -13,14 +13,18 @@ export default function AddToCart({
   productId,
   inStock = true,
   wide = false,
+  max,
 }: {
   productId: string;
   inStock?: boolean;
   /** Larger control for the product detail page. */
   wide?: boolean;
+  /** Highest quantity allowed (tracked stock); defaults to MAX_QTY. */
+  max?: number;
 }) {
   const { lines, add, setQty } = useCart();
   const qty = lines.find((line) => line.productId === productId)?.qty ?? 0;
+  const limit = Math.max(1, Math.min(MAX_QTY, max ?? MAX_QTY));
 
   const sizing = wide
     ? "px-6 py-3.5 text-base"
@@ -80,14 +84,20 @@ export default function AddToCart({
           wide ? "min-w-10 text-lg" : "min-w-8 text-sm"
         }`}
         aria-live="polite"
-        title={qty >= MAX_QTY ? `Maximum ${MAX_QTY} per order` : `${qty} in cart`}
+        title={
+          qty >= limit
+            ? max !== undefined && max < MAX_QTY
+              ? `Only ${max} in stock`
+              : `Maximum ${limit} per order`
+            : `${qty} in cart`
+        }
       >
         {qty}
       </span>
       <button
         type="button"
         aria-label="Increase quantity"
-        disabled={qty >= MAX_QTY}
+        disabled={qty >= limit}
         onClick={() => add(productId, 1)}
         className={`flex items-center justify-center rounded-full bg-white/15 font-semibold hover:bg-white/25 disabled:opacity-40 ${
           wide ? "h-11 w-11 text-xl" : "h-9 w-9 text-lg"

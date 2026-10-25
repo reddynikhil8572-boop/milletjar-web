@@ -4,7 +4,12 @@ import { notFound } from "next/navigation";
 import AddToCart from "@/components/add-to-cart";
 import Reveal from "@/components/reveal";
 import { FREE_SHIPPING_THRESHOLD, SHIPPING_FEE } from "@/lib/pricing";
-import { getProducts, type Product } from "@/lib/products";
+import {
+  LOW_STOCK_THRESHOLD,
+  getProducts,
+  isAvailable,
+  type Product,
+} from "@/lib/products";
 
 export const dynamic = "force-dynamic";
 
@@ -49,6 +54,9 @@ export default async function ProductPage({
   if (!product) notFound();
 
   const off = discountPercent(product);
+  const available = isAvailable(product);
+  const tracked = product.stock !== null && product.stock !== undefined;
+  const lowStock = available && tracked && product.stock! <= LOW_STOCK_THRESHOLD;
   // Related products: same category first (in stock first), then the rest of
   // the catalog to fill up to three cards.
   const related = products
@@ -88,7 +96,7 @@ export default async function ProductPage({
               sizes="(max-width: 768px) 100vw, 50vw"
               className="object-cover"
             />
-            {!product.inStock && (
+            {!available && (
               <span className="absolute bottom-4 left-4 rounded-full bg-mj-ink/80 px-4 py-1.5 text-xs text-white">
                 Out of stock
               </span>
@@ -131,12 +139,16 @@ export default async function ProductPage({
                 <>
                   <span className="text-lg text-mj-brown line-through">
                     ₹{product.compareAtPrice}
-                  </span>
-                  <span className="rounded-full bg-mj-orange/15 px-2.5 py-1 text-xs font-semibold text-mj-orange">
-                    You save ₹{product.compareAtPrice - product.price}
-                  </span>
+                  </span>              <span className="rounded-full bg-mj-orange/15 px-2.5 py-1 text-xs font-semibold text-mj-orange">
+                You save ₹{product.compareAtPrice - product.price}
+              </span>
                 </>
               )}
+            {lowStock && (
+              <span className="mj-pop rounded-full bg-red-50 px-2.5 py-1 text-xs font-semibold text-red-600 ring-1 ring-red-200">
+                Only {product.stock} left
+              </span>
+            )}
           </div>
 
           <p className="mt-5 text-base leading-relaxed text-mj-brown">
@@ -147,8 +159,20 @@ export default async function ProductPage({
           <dl className="mt-6 grid grid-cols-2 gap-3 text-sm">
             <div className="rounded-2xl border border-mj-beige bg-white p-3.5">
               <dt className="text-xs text-mj-brown">Availability</dt>
-              <dd className="mt-0.5 font-medium text-mj-ink">
-                {product.inStock ? "In stock" : "Out of stock"}
+              <dd
+                className={`mt-0.5 font-medium ${
+                  !available
+                    ? "text-red-600"
+                    : lowStock
+                      ? "text-amber-600"
+                      : "text-mj-ink"
+                }`}
+              >
+                {!available
+                  ? "Out of stock"
+                  : tracked
+                    ? `${product.stock} in stock`
+                    : "In stock"}
               </dd>
             </div>
             <div className="rounded-2xl border border-mj-beige bg-white p-3.5">
@@ -174,7 +198,8 @@ export default async function ProductPage({
           <div className="mt-6 max-w-sm">
             <AddToCart
               productId={product.id}
-              inStock={product.inStock}
+              inStock={available}
+              max={tracked ? product.stock! : undefined}
               wide
             />
             <p className="mt-3 text-xs text-mj-brown">

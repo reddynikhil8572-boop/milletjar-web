@@ -75,7 +75,15 @@ export async function PATCH(
     // successful in the admin panel while storing nothing.
     const saved = await readTable("products");
     const persisted = saved.find((p) => p.id === id);
-    if (!persisted || persisted.updatedAt !== result.product.updatedAt) {
+    const stockMatches =
+      patch.stock === undefined || patch.stock === null
+        ? true
+        : persisted?.stock === patch.stock;
+    if (
+      !persisted ||
+      persisted.updatedAt !== result.product.updatedAt ||
+      !stockMatches
+    ) {
       return jsonError(500, MIGRATION_HINT);
     }
 

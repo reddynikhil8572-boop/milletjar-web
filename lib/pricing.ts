@@ -1,4 +1,4 @@
-import { getProducts } from "./products";
+import { getProducts, isAvailable } from "./products";
 import type { OrderItem } from "./types";
 
 export const FREE_SHIPPING_THRESHOLD = 499;
@@ -31,13 +31,20 @@ export async function priceCart(input: CartInput): Promise<PricedCart> {
   const items: OrderItem[] = [];
   for (const [productId, qty] of merged) {
     const product = products.find((p) => p.id === productId);
-    if (!product || !product.inStock) continue;
+    if (!product || !isAvailable(product)) continue;
+    // A tracked quantity never lets the order exceed what is left.
+    const limit =
+      product.stock === null || product.stock === undefined
+        ? MAX_QTY_PER_ITEM
+        : Math.min(MAX_QTY_PER_ITEM, product.stock);
+    const capped = Math.min(qty, limit);
+    if (capped <= 0) continue;
     items.push({
       productId: product.id,
       name: product.name,
       price: product.price,
-      qty,
-      lineTotal: product.price * qty,
+      qty: capped,
+      lineTotal: product.price * capped,
     });
   }
 

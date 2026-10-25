@@ -1,7 +1,11 @@
 import Image from "next/image";
 import Link from "next/link";
 import { SITE } from "@/lib/config";
-import { getProducts, type Product } from "@/lib/products";
+import {
+  getProducts,
+  isAvailable,
+  type Product,
+} from "@/lib/products";
 import AddToCart from "@/components/add-to-cart";
 import Reveal from "@/components/reveal";
 
@@ -203,7 +207,15 @@ export default async function Home() {
                   {product.description}
                 </p>
                 <div className="mt-4">
-                  <AddToCart productId={product.id} inStock={product.inStock} />
+                  <AddToCart
+                    productId={product.id}
+                    inStock={isAvailable(product)}
+                    max={
+                      product.stock === null || product.stock === undefined
+                        ? undefined
+                        : product.stock
+                    }
+                  />
                 </div>
               </div>
               </article>

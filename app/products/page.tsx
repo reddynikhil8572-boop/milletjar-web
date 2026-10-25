@@ -1,6 +1,11 @@
 import Image from "next/image";
 import Link from "next/link";
-import { getProducts, type Product } from "@/lib/products";
+import {
+  LOW_STOCK_THRESHOLD,
+  getProducts,
+  isAvailable,
+  type Product,
+} from "@/lib/products";
 import AddToCart from "@/components/add-to-cart";
 import Reveal from "@/components/reveal";
 
@@ -64,11 +69,19 @@ export default async function ProductsPage() {
                   sizes="(max-width: 640px) 100vw, (max-width: 1024px) 50vw, 33vw"
                   className="object-cover transition-transform duration-500 group-hover:scale-[1.03]"
                 />
-                {!product.inStock && (
+                {!isAvailable(product) && (
                   <span className="absolute bottom-3 left-3 rounded-full bg-mj-ink/80 px-3 py-1 text-xs text-white">
                     Out of stock
                   </span>
                 )}
+                {isAvailable(product) &&
+                  product.stock !== null &&
+                  product.stock !== undefined &&
+                  product.stock <= LOW_STOCK_THRESHOLD && (
+                    <span className="absolute bottom-3 left-3 rounded-full bg-red-50 px-3 py-1 text-xs font-semibold text-red-600 ring-1 ring-red-200">
+                      Only {product.stock} left
+                    </span>
+                  )}
                 {product.labels.length > 0 && (
                   <span className="absolute left-3 top-3 flex flex-wrap gap-1.5">
                     {product.labels.map((label) => (
@@ -113,8 +126,16 @@ export default async function ProductsPage() {
                 {product.description}
               </p>
               <div className="mt-4 flex flex-col gap-2">
-                <AddToCart productId={product.id} inStock={product.inStock} />
-                {product.inStock ? (
+                <AddToCart
+                  productId={product.id}
+                  inStock={isAvailable(product)}
+                  max={
+                    product.stock === null || product.stock === undefined
+                      ? undefined
+                      : product.stock
+                  }
+                />
+                {isAvailable(product) ? (
                   <Link
                     href="/cart"
                     className="mj-press rounded-full border border-mj-beige px-4 py-2 text-center text-sm font-medium text-mj-ink hover:bg-mj-cream"
