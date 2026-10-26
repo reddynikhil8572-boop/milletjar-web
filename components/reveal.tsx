@@ -3,9 +3,12 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 
 /**
- * Wraps children in a gentle fade + rise as they scroll into view.
- * The observer disconnects after the first reveal, and users who prefer
- * reduced motion (or have scripting disabled) see content immediately.
+ * Scroll entrance wrapper: children fade up slightly as they enter the
+ * viewport, then settle in with a subtle scale. Stagger delays are applied
+ * to the *in* transition so siblings animate one after another.
+ *
+ * Reduced-motion users (and browsers with scripting disabled) see content
+ * immediately thanks to the CSS fallback in globals.css.
  */
 export default function Reveal({
   children,
@@ -30,9 +33,6 @@ export default function Reveal({
     const el = ref.current;
     if (!el) return;
 
-    // Reduced-motion users get shown the content via CSS instead, so this
-    // only wires the observer; state updates happen inside its callback (or
-    // a deferred timeout), never synchronously in the effect body.
     if (typeof IntersectionObserver === "undefined") {
       const timer = window.setTimeout(() => setVisible(true), 0);
       return () => window.clearTimeout(timer);
@@ -54,8 +54,11 @@ export default function Reveal({
     return () => observer.disconnect();
   }, []);
 
+  const stagger = Math.min(5, Math.round(delay / 80));
   const cls = `mj-reveal ${visible ? "is-visible" : ""} ${className}`;
-  const style = delay > 0 ? { transitionDelay: `${delay}ms` } : undefined;
+  // Stagger the entrance itself, not the waiting state, so the element is
+  // already correctly placed before the animation begins.
+  const style = { "data-stagger": String(stagger) };
 
   if (as === "li") {
     return (

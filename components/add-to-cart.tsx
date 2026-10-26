@@ -45,7 +45,7 @@ export default function AddToCart({
       <button
         type="button"
         onClick={() => add(productId, 1)}
-        className={`mj-press inline-flex w-full items-center justify-center gap-2 rounded-full bg-mj-green font-medium text-white hover:bg-mj-green-700 ${sizing}`}
+        className={`mj-press inline-flex w-full items-center justify-center gap-2 rounded-full bg-mj-green font-medium text-white transition-all duration-200 hover:bg-mj-green-700 hover:shadow-sm active:scale-[0.98] ${sizing}`}
       >
         <svg
           width="16"
@@ -73,7 +73,7 @@ export default function AddToCart({
         type="button"
         aria-label="Decrease quantity"
         onClick={() => setQty(productId, qty - 1)}
-        className={`flex items-center justify-center rounded-full bg-white/15 font-semibold hover:bg-white/25 ${
+        className={`flex items-center justify-center rounded-full bg-white/15 font-semibold hover:bg-white/25 active:scale-[0.92] ${
           wide ? "h-11 w-11 text-xl" : "h-9 w-9 text-lg"
         }`}
       >
@@ -99,7 +99,7 @@ export default function AddToCart({
         aria-label="Increase quantity"
         disabled={qty >= limit}
         onClick={() => add(productId, 1)}
-        className={`flex items-center justify-center rounded-full bg-white/15 font-semibold hover:bg-white/25 disabled:opacity-40 ${
+        className={`flex items-center justify-center rounded-full bg-white/15 font-semibold hover:bg-white/25 disabled:opacity-40 active:scale-[0.92] ${
           wide ? "h-11 w-11 text-xl" : "h-9 w-9 text-lg"
         }`}
       >

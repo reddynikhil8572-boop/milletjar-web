@@ -3,6 +3,7 @@ import { Inter } from "next/font/google";
 import "./globals.css";
 import { CartProvider } from "@/components/cart-provider";
 import BrandIntro from "@/components/brand-intro";
+import { MjMotion } from "@/components/mj-motion";
 import {
   SiteFooter,
   SiteHeader,
@@ -73,7 +74,9 @@ export default async function RootLayout({
             messages={announcements.enabled ? announcements.messages : []}
           />
           <SiteHeader />
-          <main className="min-h-[70vh]">{children}</main>
+          <MjMotion data-initial="true">
+            <main className="min-h-[70vh]">{children}</main>
+          </MjMotion>
           <SiteFooter />
           <SiteMobileBar />
         </CartProvider>

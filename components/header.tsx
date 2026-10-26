@@ -115,12 +115,13 @@ export default function Header() {
                   {cart.count}
                 </span>
               )}
+              <span className="sr-only">Cart has {cart.count} item{cart.count === 1 ? "" : "s"}</span>
             </Link>
 
             {session?.user ? (
               <Link
                 href="/account"
-                className="hidden h-10 items-center gap-2 rounded-full bg-mj-green px-4 text-sm font-medium text-white transition-colors hover:bg-mj-green-700 sm:inline-flex"
+                className="hidden h-10 items-center gap-2 rounded-full bg-mj-green px-4 text-sm font-medium text-white transition-all duration-200 hover:bg-mj-green-700 hover:shadow-sm sm:inline-flex"
               >
                 <span className="flex h-6 w-6 items-center justify-center rounded-full bg-white/20 text-xs">
                   {session.user.name.charAt(0).toUpperCase()}
@@ -130,7 +131,7 @@ export default function Header() {
             ) : (
               <Link
                 href="/login"
-                className="hidden h-10 items-center rounded-full bg-mj-green px-4 text-sm font-medium text-white transition-colors hover:bg-mj-green-700 sm:inline-flex"
+                className="hidden h-10 items-center rounded-full bg-mj-green px-4 text-sm font-medium text-white transition-all duration-200 hover:bg-mj-green-700 hover:shadow-sm sm:inline-flex"
               >
                 Sign in
               </Link>

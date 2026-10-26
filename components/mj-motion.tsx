@@ -1,0 +1,49 @@
+"use client";
+
+import { usePathname } from "next/navigation";
+import { useEffect, useRef, useState } from "react";
+
+/**
+ * Lightweight page-level transition wrapper.
+ *
+ * On route changes it briefly fades the page content out and back in with a
+ * tiny vertical nudge. It is intentionally subtle so the storefront still
+ * feels fast, and it defers entirely to CSS for reduced-motion users.
+ */
+export default function MjMotion({
+  children,
+}: {
+  children: React.ReactNode;
+}) {
+  const pathname = usePathname();
+  const key = useRef(pathname);
+  const [out, setOut] = useState(false);
+
+  useEffect(() => {
+    if (pathname === key.current.current) return;
+    key.current = pathname;
+
+    if (window.matchMedia("(prefers-reduced-motion: reduce)").matches) {
+      setOut(false);
+      return;
+    }
+
+    let done = false;
+    setOut(true);
+    requestAnimationFrame(() => {
+      if (done) return;
+      done = true;
+      setOut(false);
+    });
+  }, [pathname]);
+
+  const cls = out
+    ? "mj-page-out"
+    : "mj-page-in";
+
+  return (
+    <div className={cls}>
+      {children}
+    </div>
+  );
+}

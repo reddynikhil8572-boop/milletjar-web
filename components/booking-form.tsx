@@ -148,7 +148,7 @@ export default function BookingForm({
                   type="button"
                   onClick={() => applySavedAddress(a)}
                   aria-pressed={selectedAddressId === a.id}
-                  className={`mj-press rounded-xl border px-3.5 py-2.5 text-left ${
+                  className={`mj-press rounded-xl border px-3.5 py-2.5 text-left transition-all duration-200 ${
                     selectedAddressId === a.id
                       ? "border-mj-green bg-mj-cream"
                       : "border-mj-beige hover:bg-mj-cream/60"
@@ -162,12 +162,11 @@ export default function BookingForm({
                     {a.city ? `, ${a.city}` : ""} — {a.pincode}
                   </span>
                 </button>
-              ))}
-              <button
-                type="button"
-                onClick={() => setSelectedAddressId(null)}
-                className="mj-press self-start text-xs font-medium text-mj-green underline-offset-2 hover:underline"
-              >
+              ))}            <button
+                  type="button"
+                  onClick={() => setSelectedAddressId(null)}
+                  className="mj-press self-start text-xs font-medium text-mj-green underline-offset-2 hover:underline hover:text-mj-green-700"
+                >
                 Use a new address
               </button>
             </div>

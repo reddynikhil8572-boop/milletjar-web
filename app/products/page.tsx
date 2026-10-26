@@ -55,11 +55,12 @@ export default async function ProductsPage() {
 
       <div className="mt-8 grid grid-cols-1 gap-3 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5">
         {products.map((product, index) => (
-          <Reveal key={product.id} delay={index * 80}>              <article className="group flex h-full flex-col overflow-hidden rounded-2xl bg-white shadow-sm ring-1 ring-mj-beige transition-shadow hover:shadow-md">                                <Link
-                  href={`/products/${product.slug}`}
-                  className="relative block aspect-square overflow-hidden"
-                  aria-label={`View ${product.name}`}
-                >
+          <Reveal key={product.id} delay={index * 80}>                    <article className="group flex h-full flex-col overflow-hidden rounded-2xl bg-white shadow-sm ring-1 ring-mj-beige transition-all duration-300 hover:shadow-md">
+                      <Link
+                        href={`/products/${product.slug}`}
+                        className="relative block aspect-square overflow-hidden"
+                        aria-label={`View ${product.name}`}
+                      >
                 <Image
                   src={product.image}
                   alt={product.name}
@@ -93,64 +94,67 @@ export default async function ProductsPage() {
                   </span>
                 )}
                 {discountPercent(product) > 0 && (
-                  <span    className="absolute right-2 top-2 rounded-full bg-mj-orange px-1.5 py-0.5 text-[10px] font-semibold text-white shadow-sm">
+                  <span
+                    className="absolute right-2 top-2 rounded-full bg-mj-orange px-1.5 py-0.5 text-[10px] font-semibold text-white shadow-sm"
+                  >
                     {discountPercent(product)}% off
                   </span>
                 )}
-              </Link>              <div className="flex flex-1 flex-col p-3">
-                  <div className="flex items-start justify-between gap-2">
-                    <h2 className="text-xs font-medium text-mj-ink leading-tight">
-                      <Link
-                        href={`/products/${product.slug}`}
-                        className="hover:text-mj-green"
-                      >
-                        {product.name}
-                      </Link>
-                    </h2>
-                    <span className="flex shrink-0 flex-col items-end gap-0.5">
-                      <span className="rounded-full bg-mj-cream px-2 py-0.5 text-xs font-semibold text-mj-green">
-                        ₹{product.price}
-                      </span>
-                      {product.compareAtPrice !== null &&
-                        product.compareAtPrice > product.price && (
-                          <>
-                            <span className="text-[10px] text-mj-brown line-through">
-                              ₹{product.compareAtPrice}
-                            </span>
-                            <span className="rounded-full bg-mj-orange/15 px-1.5 py-0.5 text-[10px] font-semibold text-mj-orange">
-                              Save ₹{product.compareAtPrice - product.price}
-                            </span>
-                          </>
-                        )}
+              </Link>
+              <div className="flex flex-1 flex-col p-3">
+                <div className="flex items-start justify-between gap-2">
+                  <h2 className="text-xs font-medium text-mj-ink leading-tight">
+                    <Link
+                      href={`/products/${product.slug}`}
+                      className="hover:text-mj-green"
+                    >
+                      {product.name}
+                    </Link>
+                  </h2>
+                  <span className="flex shrink-0 flex-col items-end gap-0.5">
+                    <span className="rounded-full bg-mj-cream px-2 py-0.5 text-xs font-semibold text-mj-green">
+                      ₹{product.price}
                     </span>
-                  </div>
-                  <p className="mt-1 flex-1 text-[11px] leading-snug text-mj-brown line-clamp-2">
-                    {product.description}
-                  </p>
-                  <div className="mt-2 flex flex-col gap-1">
-                    <AddToCart
-                      productId={product.id}
-                      inStock={isAvailable(product)}
-                      max={
-                        product.stock === null || product.stock === undefined
-                          ? undefined
-                          : product.stock
-                      }
-                    />
-                    {isAvailable(product) ? (
-                      <Link
-                        href="/cart"
-                        className="block text-center text-[11px] font-medium text-mj-green hover:underline"
-                      >
-                        View cart
-                      </Link>
-                    ) : (
-                      <span className="block text-center text-[11px] text-mj-brown">
-                        Currently unavailable
-                      </span>
-                    )}
-                  </div>
+                    {product.compareAtPrice !== null &&
+                      product.compareAtPrice > product.price && (
+                        <>
+                          <span className="text-[10px] text-mj-brown line-through">
+                            ₹{product.compareAtPrice}
+                          </span>
+                          <span className="rounded-full bg-mj-orange/15 px-1.5 py-0.5 text-[10px] font-semibold text-mj-orange">
+                            Save ₹{product.compareAtPrice - product.price}
+                          </span>
+                        </>
+                      )}
+                  </span>
                 </div>
+                <p className="mt-1 flex-1 text-[11px] leading-snug text-mj-brown line-clamp-2">
+                  {product.description}
+                </p>
+                <div className="mt-2 flex flex-col gap-1">
+                  <AddToCart
+                    productId={product.id}
+                    inStock={isAvailable(product)}
+                    max={
+                      product.stock === null || product.stock === undefined
+                        ? undefined
+                        : product.stock
+                    }
+                  />
+                  {isAvailable(product) ? (
+                    <Link
+                      href="/cart"
+                      className="block text-center text-[11px] font-medium text-mj-green hover:underline"
+                    >
+                      View cart
+                    </Link>
+                  ) : (
+                    <span className="block text-center text-[11px] text-mj-brown">
+                      Currently unavailable
+                    </span>
+                  )}
+                </div>
+              </div>
             </article>
           </Reveal>
         ))}
