@@ -58,7 +58,7 @@ export default function Reveal({
   const cls = `mj-reveal ${visible ? "is-visible" : ""} ${className}`;
   // Stagger the entrance itself, not the waiting state, so the element is
   // already correctly placed before the animation begins.
-  const style = { "data-stagger": String(stagger) };
+  const style: Record<string, string> = { "data-stagger": String(stagger) };
 
   if (as === "li") {
     return (

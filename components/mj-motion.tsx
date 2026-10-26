@@ -16,12 +16,12 @@ export function MjMotion({
   children: React.ReactNode;
 }) {
   const pathname = usePathname();
-  const key = useRef(pathname);
+  const prevPathname = useRef(pathname);
   const [out, setOut] = useState(false);
 
   useEffect(() => {
-    if (pathname === key.current.current) return;
-    key.current = pathname;
+    if (pathname === prevPathname.current) return;
+    prevPathname.current = pathname;
 
     if (window.matchMedia("(prefers-reduced-motion: reduce)").matches) {
       setOut(false);
