@@ -10,7 +10,7 @@ import { useEffect, useRef, useState } from "react";
  * tiny vertical nudge. It is intentionally subtle so the storefront still
  * feels fast, and it defers entirely to CSS for reduced-motion users.
  */
-export default function MjMotion({
+export function MjMotion({
   children,
 }: {
   children: React.ReactNode;
@@ -41,9 +41,11 @@ export default function MjMotion({
     ? "mj-page-out"
     : "mj-page-in";
 
+
   return (
     <div className={cls}>
       {children}
     </div>
   );
 }
+

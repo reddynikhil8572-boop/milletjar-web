@@ -4,6 +4,7 @@ import "./globals.css";
 import { CartProvider } from "@/components/cart-provider";
 import BrandIntro from "@/components/brand-intro";
 import { MjMotion } from "@/components/mj-motion";
+
 import {
   SiteFooter,
   SiteHeader,

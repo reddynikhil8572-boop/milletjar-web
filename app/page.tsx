@@ -102,7 +102,7 @@ export default async function Home() {
             <Reveal delay={120} className="relative">
               <div className="relative aspect-[4/3] w-full overflow-hidden rounded-3xl shadow-xl ring-1 ring-mj-beige">
                 <Image
-                  src="/images/logo.png"
+                  src="/images/og-logo.jpg"
                   alt="Millet Jar product range"
                   fill
                   sizes="(max-width: 768px) 100vw, 50vw"
