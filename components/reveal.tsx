@@ -21,7 +21,7 @@ export default function Reveal({
   /** Stagger delay in ms before the reveal starts. */
   delay?: number;
   /** Element to render — use "li" inside lists to keep valid markup. */
-  as?: "div" | "li";
+  as?: "div" | "li" | "article";
 }) {
   const ref = useRef<HTMLElement | null>(null);
   const setRef = useCallback((node: HTMLElement | null) => {
@@ -65,6 +65,13 @@ export default function Reveal({
       <li ref={setRef} className={cls} style={style}>
         {children}
       </li>
+    );
+  }
+  if (as === "article") {
+    return (
+      <article ref={setRef} className={cls} style={style}>
+        {children}
+      </article>
     );
   }
   return <div ref={setRef} className={cls} style={style}>{children}</div>;

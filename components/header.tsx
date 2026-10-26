@@ -37,25 +37,25 @@ export default function Header() {
   return (
     <header className="sticky top-0 z-50 border-b border-mj-beige/80 bg-white/90 backdrop-blur-md">
       <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
-        <div className="flex h-16 items-center justify-between gap-4">
+        <div className="flex h-12 sm:h-14 items-center justify-between gap-3">
           <Link
             href="/"
-            className="group flex items-center gap-2.5"
+            className="group flex items-center gap-2"
             aria-label="Millet Jar home"
           >
-            <span className="mj-logo-tile relative block h-10 w-10 shrink-0 overflow-hidden rounded-xl bg-white ring-1 ring-mj-beige">
+            <span className="mj-logo-tile relative block h-9 w-9 shrink-0 overflow-hidden rounded-xl bg-white ring-1 ring-mj-beige">
               <Image
                 src="/images/logo.png"
                 alt="Millet Jar logo"
                 fill
                 preload
-                sizes="40px"
+                sizes="36px"
                 className="object-cover"
               />
               <span aria-hidden="true" className="mj-logo-shine" />
             </span>
             <span className="leading-tight">
-              <span className="block text-base font-semibold text-mj-ink">
+              <span className="block text-sm font-semibold text-mj-ink">
                 Millet Jar
               </span>
               <span className="hidden text-[11px] text-mj-brown sm:block">
@@ -93,8 +93,8 @@ export default function Header() {
               aria-label={`Cart with ${cart.count} items`}
             >
               <svg
-                width="18"
-                height="18"
+                width="17"
+                height="17"
                 viewBox="0 0 24 24"
                 fill="none"
                 stroke="currentColor"
@@ -139,14 +139,14 @@ export default function Header() {
 
             <button
               type="button"
-              className="mj-press inline-flex h-11 w-11 items-center justify-center rounded-full text-mj-ink hover:bg-mj-cream md:hidden"
+              className="mj-press inline-flex h-10 w-10 items-center justify-center rounded-full text-mj-ink hover:bg-mj-cream md:hidden"
               onClick={() => setMenuOpenAt(open ? null : pathname)}
               aria-label="Toggle menu"
               aria-expanded={open}
             >
               <svg
-                width="22"
-                height="22"
+                width="20"
+                height="20"
                 viewBox="0 0 24 24"
                 fill="none"
                 stroke="currentColor"
@@ -164,15 +164,13 @@ export default function Header() {
             </button>
           </div>
         </div>
-      </div>
-
-      <div
+      </div>          <div
         className={`mj-mobile-menu bg-white md:hidden${
           open ? " border-t border-mj-beige" : ""
         }`}
         data-open={open}
       >
-        <div className="mj-mobile-menu__list mx-auto flex max-w-7xl flex-col px-4 py-2 text-sm">
+        <div className="mj-mobile-menu__list mx-auto flex max-w-sm flex-col px-4 py-2 text-sm">
           {links.map((link) => (
             <Link
               key={link.href}

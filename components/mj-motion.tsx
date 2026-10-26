@@ -24,16 +24,19 @@ export function MjMotion({
     prevPathname.current = pathname;
 
     if (window.matchMedia("(prefers-reduced-motion: reduce)").matches) {
-      setOut(false);
       return;
     }
 
     let done = false;
-    setOut(true);
     requestAnimationFrame(() => {
       if (done) return;
       done = true;
-      setOut(false);
+      setOut(true);
+      requestAnimationFrame(() => {
+        if (done) return;
+        done = true;
+        setOut(false);
+      });
     });
   }, [pathname]);
 
