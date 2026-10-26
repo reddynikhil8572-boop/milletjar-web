@@ -58,21 +58,25 @@ export default function Reveal({
   const cls = `mj-reveal ${visible ? "is-visible" : ""} ${className}`;
   // Stagger the entrance itself, not the waiting state, so the element is
   // already correctly placed before the animation begins.
-  const style: Record<string, string> = { "data-stagger": String(stagger) };
+  const staggerAttr = String(stagger);
 
   if (as === "li") {
     return (
-      <li ref={setRef} className={cls} style={style}>
+      <li ref={setRef} className={cls} data-stagger={staggerAttr}>
         {children}
       </li>
     );
   }
   if (as === "article") {
     return (
-      <article ref={setRef} className={cls} style={style}>
+      <article ref={setRef} className={cls} data-stagger={staggerAttr}>
         {children}
       </article>
     );
   }
-  return <div ref={setRef} className={cls} style={style}>{children}</div>;
+  return (
+    <div ref={setRef} className={cls} data-stagger={staggerAttr}>
+      {children}
+    </div>
+  );
 }

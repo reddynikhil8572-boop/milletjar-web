@@ -4,8 +4,8 @@ import { SITE } from "@/lib/config";
 
 export default function Footer() {
   return (
-    <footer className="mt-20 border-t border-mj-beige bg-mj-cream/50">
-      <div className="mx-auto max-w-7xl px-4 pt-12 pb-28 sm:px-6 md:pb-12 lg:px-8">
+    <footer className="mt-12 border-t border-mj-beige bg-mj-cream/50 sm:mt-20">
+      <div className="mx-auto max-w-7xl px-4 pb-[calc(7rem+env(safe-area-inset-bottom))] pt-12 sm:px-6 md:pb-12 lg:px-8">
         <div className="grid grid-cols-1 gap-10 md:grid-cols-4">
           <div className="md:col-span-2">
             <Link

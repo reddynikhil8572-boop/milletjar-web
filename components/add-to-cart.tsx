@@ -13,12 +13,15 @@ export default function AddToCart({
   productId,
   inStock = true,
   wide = false,
+  compact = false,
   max,
 }: {
   productId: string;
   inStock?: boolean;
   /** Larger control for the product detail page. */
   wide?: boolean;
+  /** Tighter control for the two-column mobile product grid. */
+  compact?: boolean;
   /** Highest quantity allowed (tracked stock); defaults to MAX_QTY. */
   max?: number;
 }) {
@@ -28,14 +31,16 @@ export default function AddToCart({
 
   const sizing = wide
     ? "px-6 py-3.5 text-base"
-    : "px-5 py-2.5 text-sm";
+    : compact
+      ? "px-2.5 py-2.5 text-[13px]"
+      : "px-5 py-2.5 text-sm";
 
   if (!inStock) {
     return (
       <span
         className={`inline-flex w-full items-center justify-center rounded-full bg-mj-cream font-medium text-mj-brown ${sizing}`}
       >
-        Currently unavailable
+        {compact ? "Out of stock" : "Currently unavailable"}
       </span>
     );
   }
@@ -67,21 +72,24 @@ export default function AddToCart({
 
   return (
     <div
-      className={`mj-pop inline-flex w-full items-center justify-between rounded-full bg-mj-green text-white ${wide ? "px-2 py-1.5" : "px-1.5 py-1"}`}
+      className={`mj-pop inline-flex w-full items-center justify-between rounded-full bg-mj-green text-white ${
+        wide ? "px-2 py-1.5" : compact ? "px-1.5 py-0" : "px-1.5 py-1"
+      }`}
     >
       <button
         type="button"
         aria-label="Decrease quantity"
         onClick={() => setQty(productId, qty - 1)}
         className={`flex items-center justify-center rounded-full bg-white/15 font-semibold hover:bg-white/25 active:scale-[0.92] ${
-          wide ? "h-11 w-11 text-xl" : "h-9 w-9 text-lg"
+          wide ? "h-11 w-11 text-xl" : compact ? "h-9 w-9 text-base" : "h-9 w-9 text-lg"
         }`}
       >
         −
       </button>
       <span
-        className={`text-center font-semibold ${
-          wide ? "min-w-10 text-lg" : "min-w-8 text-sm"
+        key={qty}
+        className={`mj-qty-pop text-center font-semibold tabular-nums ${
+          wide ? "min-w-10 text-lg" : compact ? "min-w-6 text-sm" : "min-w-8 text-sm"
         }`}
         aria-live="polite"
         title={
@@ -100,7 +108,7 @@ export default function AddToCart({
         disabled={qty >= limit}
         onClick={() => add(productId, 1)}
         className={`flex items-center justify-center rounded-full bg-white/15 font-semibold hover:bg-white/25 disabled:opacity-40 active:scale-[0.92] ${
-          wide ? "h-11 w-11 text-xl" : "h-9 w-9 text-lg"
+          wide ? "h-11 w-11 text-xl" : compact ? "h-9 w-9 text-base" : "h-9 w-9 text-lg"
         }`}
       >
         +
