@@ -55,19 +55,19 @@ export default async function ProductsPage() {
 
       <div className="mt-8 grid grid-cols-1 gap-3 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5">
         {products.map((product, index) => (
-          <Reveal key={product.id} delay={index * 80}>                    <article className="group flex h-full flex-col overflow-hidden rounded-2xl bg-white shadow-sm ring-1 ring-mj-beige transition-all duration-300 hover:shadow-md">
-                      <Link
-                        href={`/products/${product.slug}`}
-                        className="relative block aspect-square overflow-hidden"
-                        aria-label={`View ${product.name}`}
-                      >
-                <Image
-                  src={product.image}
-                  alt={product.name}
-                  fill
-                  sizes="(max-width: 640px) 100vw, (max-width: 768px) 50vw, (max-width: 1024px) 33vw, 20vw"
-                  className="object-cover transition-transform duration-500 group-hover:scale-[1.03]"
-                />
+          <Reveal key={product.id} delay={index * 80}>              <article className="group flex h-full flex-col overflow-hidden rounded-2xl bg-white shadow-sm ring-1 ring-mj-beige transition-all duration-300 hover:shadow-md">
+                <Link
+                  href={`/products/${product.slug}`}
+                  className="relative block aspect-square overflow-hidden"
+                  aria-label={`View ${product.name}`}
+                >
+                  <Image
+                    src={product.image}
+                    alt={product.name}
+                    fill
+                    sizes="(max-width: 640px) 100vw, (max-width: 768px) 50vw, (max-width: 1024px) 33vw, 20vw"
+                    className="object-cover transition-transform duration-500 group-hover:scale-[1.03]"
+                  />
                 {!isAvailable(product) && (
                   <span className="absolute bottom-3 left-3 rounded-full bg-mj-ink/80 px-3 py-1 text-xs text-white">
                     Out of stock

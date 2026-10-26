@@ -102,7 +102,7 @@ export default async function Home() {
             <Reveal delay={120} className="relative">
               <div className="relative aspect-[4/3] w-full overflow-hidden rounded-3xl shadow-xl ring-1 ring-mj-beige">
                 <Image
-                  src="/images/WhatsApp Image 2026-10-22 at 5.17.25 PM (2).jpeg"
+                  src="/images/logo.png"
                   alt="Millet Jar product range"
                   fill
                   sizes="(max-width: 768px) 100vw, 50vw"
@@ -150,7 +150,7 @@ export default async function Home() {
 
                 <div className="mt-7 grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">          {featured.map((product, index) => (
             <Reveal key={product.id} delay={index * 80}>
-              <article className="group flex h-full flex-col overflow-hidden rounded-2xl bg-white shadow-sm ring-1 ring-mj-beige transition-shadow hover:shadow-md">
+              <article className="group flex h-full flex-col overflow-hidden rounded-2xl bg-white shadow-sm ring-1 ring-mj-beige transition-all duration-300 hover:shadow-md">
                 <Link
                   href={`/products/${product.slug}`}
                   className="relative block aspect-square overflow-hidden"

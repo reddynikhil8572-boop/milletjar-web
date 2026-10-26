@@ -148,10 +148,10 @@ export default function BookingForm({
                   type="button"
                   onClick={() => applySavedAddress(a)}
                   aria-pressed={selectedAddressId === a.id}
-                  className={`mj-press rounded-xl border px-3.5 py-2.5 text-left transition-all duration-200 ${
+                  className={`mj-press rounded-xl border px-3.5 py-2.5 text-left transition-all duration-200 active:scale-[0.99] ${
                     selectedAddressId === a.id
                       ? "border-mj-green bg-mj-cream"
-                      : "border-mj-beige hover:bg-mj-cream/60"
+                      : "border-mj-beige hover:bg-mj-cream/70"
                   }`}
                 >
                   <span className="block text-sm font-medium text-mj-ink">
@@ -265,7 +265,7 @@ export default function BookingForm({
           <select
             value={slot}
             onChange={(event) => setSlot(event.target.value)}
-            className="mt-1.5 w-full rounded-xl border border-mj-beige bg-white px-3.5 py-2.5 text-sm text-mj-ink focus:outline-none focus:ring-2 focus:ring-mj-green/30"
+            className="mj-press mt-1.5 w-full rounded-xl border border-mj-beige bg-white px-3.5 py-2.5 text-sm text-mj-ink focus:outline-none focus:ring-2 focus:ring-mj-green/30"
           >
             {SLOTS.map((option) => (
               <option key={option} value={option}>
@@ -279,7 +279,7 @@ export default function BookingForm({
           <button
             type="submit"
             disabled={!valid || busy !== null}
-            className="mj-press flex-1 rounded-full bg-mj-green px-5 py-3 text-sm font-medium text-white hover:bg-mj-green-700 disabled:cursor-not-allowed disabled:opacity-50"
+            className="mj-press flex-1 rounded-full bg-mj-green px-5 py-3 text-sm font-medium text-white transition-all duration-200 hover:bg-mj-green-700 hover:shadow-sm active:scale-[0.98] disabled:cursor-not-allowed disabled:opacity-50"
           >
             {busy === "online" ? "Creating order…" : "Continue to payment"}
           </button>
@@ -287,7 +287,7 @@ export default function BookingForm({
             type="button"
             onClick={() => submit("whatsapp")}
             disabled={!valid || busy !== null}
-            className="mj-press flex-1 rounded-full border border-mj-green px-5 py-3 text-sm font-medium text-mj-green hover:bg-mj-cream disabled:cursor-not-allowed disabled:opacity-50"
+            className="mj-press flex-1 rounded-full border border-mj-green px-5 py-3 text-sm font-medium text-mj-green transition-all duration-200 hover:bg-mj-cream active:scale-[0.98] disabled:cursor-not-allowed disabled:opacity-50"
           >
             {busy === "whatsapp" ? "Opening WhatsApp…" : "Order on WhatsApp"}
           </button>
