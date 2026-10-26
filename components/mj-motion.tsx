@@ -1,14 +1,15 @@
 "use client";
 
 import { usePathname } from "next/navigation";
-import { useEffect, useRef, useState } from "react";
 
 /**
- * Lightweight page-level transition wrapper.
+ * Lightweight page-level entrance wrapper.
  *
- * On route changes it briefly fades the page content out and back in with a
- * tiny vertical nudge. It is intentionally subtle so the storefront still
- * feels fast, and it defers entirely to CSS for reduced-motion users.
+ * Keying the wrapper by pathname replays the subtle fade-in on every
+ * client-side route change. There is deliberately no fade-out phase: the
+ * outgoing animation used to start after the new page had already rendered
+ * and, if it got stuck, left the new page at `opacity: 0` (a blank product
+ * page). Reduced-motion users get no animation via globals.css.
  */
 export function MjMotion({
   children,
@@ -16,39 +17,10 @@ export function MjMotion({
   children: React.ReactNode;
 }) {
   const pathname = usePathname();
-  const prevPathname = useRef(pathname);
-  const [out, setOut] = useState(false);
-
-  useEffect(() => {
-    if (pathname === prevPathname.current) return;
-    prevPathname.current = pathname;
-
-    if (window.matchMedia("(prefers-reduced-motion: reduce)").matches) {
-      return;
-    }
-
-    let done = false;
-    requestAnimationFrame(() => {
-      if (done) return;
-      done = true;
-      setOut(true);
-      requestAnimationFrame(() => {
-        if (done) return;
-        done = true;
-        setOut(false);
-      });
-    });
-  }, [pathname]);
-
-  const cls = out
-    ? "mj-page-out"
-    : "mj-page-in";
-
 
   return (
-    <div className={cls}>
+    <div key={pathname} className="mj-page-in">
       {children}
     </div>
   );
 }
-

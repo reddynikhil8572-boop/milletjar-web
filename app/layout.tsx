@@ -75,7 +75,7 @@ export default async function RootLayout({
             messages={announcements.enabled ? announcements.messages : []}
           />
           <SiteHeader />
-          <MjMotion data-initial="true">
+          <MjMotion>
             <main className="min-h-[70vh]">{children}</main>
           </MjMotion>
           <SiteFooter />

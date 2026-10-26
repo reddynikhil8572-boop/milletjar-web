@@ -250,17 +250,9 @@ button,
 /* Page-level route transition (components/mj-motion.tsx)              */
 /* ------------------------------------------------------------------ */
 
-.mj-page-in,
-.mj-page-out {
-  will-change: transform, opacity;
-}
-
 .mj-page-in {
+  will-change: transform, opacity;
   animation: mj-page-in 260ms cubic-bezier(0.22, 1, 0.36, 1) both;
-}
-
-.mj-page-out {
-  animation: mj-page-out 200ms cubic-bezier(0.4, 0, 1, 1) both;
 }
 
 @keyframes mj-page-in {
@@ -272,26 +264,6 @@ button,
     opacity: 1;
     transform: translateY(0) scale(1);
   }
-}
-
-@keyframes mj-page-out {
-  from {
-    opacity: 1;
-    transform: translateY(0) scale(1);
-  }
-  to {
-    opacity: 0;
-    transform: translateY(-6px) scale(0.998);
-  }
-}
-
-/* Only run page transitions after the initial paint so the very first
-   load is fast and unstyled. */
-.mj-page-in[data-initial="true"],
-.mj-page-out[data-initial="true"] {
-  animation: none !important;
-  opacity: 1 !important;
-  transform: none !important;
 }
 
 /* ------------------------------------------------------------------ */
@@ -613,6 +585,7 @@ button,
     transform: none !important;
     box-shadow: none !important;
   }
+  .mj-page-in,
   .mj-rise,
   .mj-pop,
   .mj-qty-pop,
