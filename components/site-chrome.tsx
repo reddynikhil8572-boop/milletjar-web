@@ -29,7 +29,7 @@ export function SiteTicker({
   if (messages.length === 0) return null;
 
   // Two identical passes so the -50% keyframe loops seamlessly.
-  const loop = [...messages, ...messages];
+  const loop = [...messages, ...messages, ...messages];
 
   return (
     <div className="mj-ticker" aria-label="Store announcements">

@@ -186,7 +186,7 @@ button,
   display: flex;
   width: max-content;
   padding-block: 0.45rem;
-  animation: mj-ticker-scroll 38s linear infinite;
+  animation: mj-ticker-scroll 20s linear infinite;
 }
 
 .mj-ticker:hover .mj-ticker__track {
