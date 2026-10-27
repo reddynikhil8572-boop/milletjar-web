@@ -11,6 +11,7 @@ type AdminProduct = {
   price: number;
   compareAtPrice: number | null;
   image: string;
+  images?: string[];
   category: "millet" | "mix" | "snack";
   labels: string[];
   inStock: boolean;
@@ -35,7 +36,7 @@ type FormState = {
   compareAtPrice: string;
   /** When true, compareAtPrice holds a percentage like "20%". */
   discountMode: boolean;
-  image: string;
+  images: string[];
   category: "millet" | "mix" | "snack";
   labels: string;
   inStock: boolean;
@@ -50,7 +51,7 @@ const EMPTY_FORM: FormState = {
   price: "",
   compareAtPrice: "",
   discountMode: false,
-  image: "",
+  images: [],
   category: "millet",
   labels: "",
   inStock: true,
@@ -66,7 +67,10 @@ function toForm(product: AdminProduct): FormState {
     price: String(product.price),
     compareAtPrice: product.compareAtPrice ? String(product.compareAtPrice) : "",
     discountMode: false,
-    image: product.image,
+    images:
+      product.images && product.images.length > 0
+        ? product.images.slice(0, 4)
+        : [product.image],
     category: product.category,
     labels: product.labels.join(", "),
     inStock: product.inStock,
@@ -196,31 +200,49 @@ export default function AdminProducts({ csrf }: { csrf: string }) {
     setError("");
   }
 
-  async function onFilePicked(file: File | undefined) {
-    if (!file) return;
+  async function onFilesPicked(files: FileList | null) {
+    const selectedFiles = Array.from(files ?? []);
+    if (selectedFiles.length === 0) return;
+    if (form.images.length + selectedFiles.length > 4) {
+      setError("A product can have up to 4 photos.");
+      return;
+    }
+
     setUploading(true);
     setError("");
+    const uploaded: string[] = [];
     try {
-      const body = new FormData();
-      body.append("file", file);
-      const res = await fetch("/api/admin/products/image", {
-        method: "POST",
-        credentials: "same-origin",
-        headers: { "x-csrf-token": csrf },
-        body,
-      });
-      const data = (await res.json().catch(() => null)) as {
-        url?: string;
-        error?: string;
-      } | null;
-      if (!res.ok || !data?.url) {
-        setError(data?.error || "Upload failed.");
-        return;
+      for (const file of selectedFiles) {
+        const body = new FormData();
+        body.append("file", file);
+        const res = await fetch("/api/admin/products/image", {
+          method: "POST",
+          credentials: "same-origin",
+          headers: { "x-csrf-token": csrf },
+          body,
+        });
+        const data = (await res.json().catch(() => null)) as {
+          url?: string;
+          error?: string;
+        } | null;
+        if (!res.ok || !data?.url) {
+          throw new Error(data?.error || "Image upload failed.");
+        }
+        uploaded.push(data.url);
       }
-      setForm((current) => ({ ...current, image: data.url as string }));
-    } catch {
-      setError("Network error while uploading the image.");
+    } catch (uploadError) {
+      setError(
+        uploadError instanceof Error
+          ? uploadError.message
+          : "Network error while uploading images."
+      );
     } finally {
+      if (uploaded.length > 0) {
+        setForm((current) => ({
+          ...current,
+          images: [...current.images, ...uploaded].slice(0, 4),
+        }));
+      }
       setUploading(false);
     }
   }
@@ -254,8 +276,9 @@ export default function AdminProducts({ csrf }: { csrf: string }) {
       setSaving(false);
       return;
     }
-    if (!form.image.trim()) {
-      setError("Upload an image or paste a path such as /images/photo.jpg.");
+    const images = form.images.map((image) => image.trim()).filter(Boolean);
+    if (images.length === 0) {
+      setError("Add at least one product photo.");
       setSaving(false);
       return;
     }
@@ -272,7 +295,8 @@ export default function AdminProducts({ csrf }: { csrf: string }) {
       description: form.description.trim(),
       price,
       compareAtPrice: compareAt,
-      image: form.image.trim(),
+      image: images[0],
+      images,
       category: form.category,
       labels,
       inStock: form.inStock,
@@ -669,46 +693,79 @@ export default function AdminProducts({ csrf }: { csrf: string }) {
 
             <div className="sm:col-span-2">
               <span className="text-xs font-medium uppercase tracking-wide text-mj-brown">
-                Image
+                Product photos ({form.images.length}/4)
               </span>
-              <div className="mt-1.5 flex flex-wrap items-center gap-3">
-                {form.image && (
-                  <span className="relative block h-16 w-16 overflow-hidden rounded-xl ring-1 ring-mj-beige">
+              <div className="mt-1.5 flex flex-wrap gap-3">
+                {form.images.map((image, index) => (
+                  <span
+                    key={`${image}-${index}`}
+                    className="relative block h-20 w-20 overflow-hidden rounded-xl ring-1 ring-mj-beige"
+                  >
                     <Image
-                      src={form.image}
-                      alt="Product preview"
+                      src={image}
+                      alt={`Product photo ${index + 1}`}
                       fill
-                      sizes="64px"
+                      sizes="80px"
                       className="object-cover"
                       unoptimized
                     />
+                    <span className="absolute inset-x-0 bottom-0 bg-black/60 px-1 py-0.5 text-center text-[10px] text-white">
+                      {index === 0 ? "Main photo" : `Photo ${index + 1}`}
+                    </span>
+                    <button
+                      type="button"
+                      onClick={() =>
+                        setForm((current) => ({
+                          ...current,
+                          images: current.images.filter(
+                            (_, imageIndex) => imageIndex !== index
+                          ),
+                        }))
+                      }
+                      aria-label={`Remove product photo ${index + 1}`}
+                      className="absolute right-1 top-1 flex h-6 w-6 items-center justify-center rounded-full bg-white/95 text-sm text-mj-ink shadow hover:bg-red-50"
+                    >
+                      ×
+                    </button>
                   </span>
-                )}
+                ))}
                 <label className="rounded-full border border-mj-beige px-4 py-2 text-sm font-medium text-mj-ink hover:bg-mj-cream">
-                  {uploading ? "Uploading…" : "Upload image"}
+                  {uploading
+                    ? "Uploading…"
+                    : form.images.length >= 4
+                      ? "Photo limit reached"
+                      : "Upload photos"}
                   <input
                     type="file"
                     className="hidden"
                     accept="image/jpeg,image/png,image/webp,image/avif,image/gif"
-                    disabled={uploading}
+                    multiple
+                    disabled={uploading || form.images.length >= 4}
                     onChange={(event) => {
-                      void onFilePicked(event.target.files?.[0]);
+                      void onFilesPicked(event.target.files);
                       event.target.value = "";
                     }}
                   />
                 </label>
-                <input
-                  value={form.image}
-                  onChange={(event) =>
-                    setForm((current) => ({
-                      ...current,
-                      image: event.target.value,
-                    }))
-                  }
-                  placeholder="/images/photo.jpg or an uploaded URL"
-                  className="min-w-0 flex-1 rounded-xl border border-mj-beige px-3.5 py-2.5 text-sm text-mj-ink focus:outline-none focus:ring-2 focus:ring-mj-green/30"
-                />
               </div>
+              <input
+                value={form.images[0] ?? ""}
+                onChange={(event) => {
+                  const image = event.target.value;
+                  setForm((current) => ({
+                    ...current,
+                    images: image
+                      ? [image, ...current.images.slice(1)]
+                      : current.images.slice(1),
+                  }));
+                }}
+                aria-label="Main product photo URL"
+                placeholder="Main photo path or uploaded URL"
+                className="mt-3 w-full rounded-xl border border-mj-beige px-3.5 py-2.5 text-sm text-mj-ink focus:outline-none focus:ring-2 focus:ring-mj-green/30"
+              />
+              <p className="mt-1 text-xs text-mj-brown">
+                Upload up to 4 photos. The first photo is used on product cards.
+              </p>
             </div>
 
             <label className="flex items-center gap-2 text-sm text-mj-ink sm:col-span-2">

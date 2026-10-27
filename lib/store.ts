@@ -12,7 +12,7 @@ import type { DB } from "./types";
  *
  * The Supabase module is imported lazily so file mode never loads it.
  */
-const DATA_DIR = process.env.DATA_DIR || path.join(process.cwd(), ".data");
+export const DATA_DIR = process.env.DATA_DIR || path.join(process.cwd(), ".data");
 const DB_FILE = path.join(DATA_DIR, "db.json");
 
 function emptyDB(): DB {

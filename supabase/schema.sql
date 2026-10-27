@@ -98,6 +98,7 @@ create table if not exists products (
   "price" integer not null,
   "compareAtPrice" integer,
   "image" text not null,
+  "images" jsonb not null default '[]'::jsonb,
   "category" text not null default 'millet',
   "labels" jsonb not null default '[]'::jsonb,
   "inStock" boolean not null default true,
@@ -115,6 +116,7 @@ create table if not exists settings (
 -- Databases created before stock tracking was added pick up the column here;
 -- null means "quantity not tracked".
 alter table products add column if not exists "stock" integer;
+alter table products add column if not exists "images" jsonb not null default '[]'::jsonb;
 
 create index if not exists user_sessions_user_idx on user_sessions ("userId");
 create index if not exists orders_user_idx on orders ("userId");
@@ -224,10 +226,11 @@ begin
     where "id" not in (
       select value->>'id' from jsonb_array_elements(coalesce(data->'products', '[]'::jsonb)) where value ? 'id'
     );
-  insert into products ("id","name","slug","description","price","compareAtPrice","image","category","labels","inStock","stock","createdAt","updatedAt")
+  insert into products ("id","name","slug","description","price","compareAtPrice","image","images","category","labels","inStock","stock","createdAt","updatedAt")
     select value->>'id', value->>'name', value->>'slug', coalesce(value->>'description', ''),
            (value->>'price')::integer, (value->>'compareAtPrice')::integer,
-           value->>'image', coalesce(value->>'category', 'millet'),
+           value->>'image', coalesce(value->'images', '[]'::jsonb),
+           coalesce(value->>'category', 'millet'),
            coalesce(value->'labels', '[]'::jsonb),
            coalesce((value->>'inStock')::boolean, true),
            (value->>'stock')::integer,
@@ -236,7 +239,8 @@ begin
     on conflict ("id") do update set
       "name"=excluded."name", "slug"=excluded."slug", "description"=excluded."description",
       "price"=excluded."price", "compareAtPrice"=excluded."compareAtPrice",
-      "image"=excluded."image", "category"=excluded."category", "labels"=excluded."labels",
+      "image"=excluded."image", "images"=excluded."images",
+      "category"=excluded."category", "labels"=excluded."labels",
       "inStock"=excluded."inStock", "stock"=excluded."stock",
       "updatedAt"=excluded."updatedAt";
 

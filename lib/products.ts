@@ -15,6 +15,11 @@ export function isAvailable(product: Product): boolean {
   return product.inStock && (product.stock ?? 1) > 0;
 }
 
+export function productImages(product: Product): string[] {
+  const images = product.images?.filter(Boolean) ?? [];
+  return images.length > 0 ? images.slice(0, 4) : [product.image];
+}
+
 /**
  * Live catalog. Read from the store on every call — Supabase in production,
  * `.data/db.json` in development — so admin edits show up immediately.

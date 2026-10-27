@@ -35,6 +35,11 @@ export async function PATCH(
     return jsonError(400, parsed.error.issues[0]?.message || "Invalid update");
   }
   const patch = parsed.data;
+  if (patch.images !== undefined) {
+    patch.image = patch.images[0];
+  } else if (patch.image !== undefined) {
+    patch.images = [patch.image];
+  }
 
   try {
     const result = await writeDB((db) => {

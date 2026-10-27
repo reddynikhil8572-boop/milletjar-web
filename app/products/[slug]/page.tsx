@@ -2,12 +2,14 @@ import Image from "next/image";
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import AddToCart from "@/components/add-to-cart";
+import ProductGallery from "@/components/product-gallery";
 import Reveal from "@/components/reveal";
 import { FREE_SHIPPING_THRESHOLD, SHIPPING_FEE } from "@/lib/pricing";
 import {
   LOW_STOCK_THRESHOLD,
   getProducts,
   isAvailable,
+  productImages,
   type Product,
 } from "@/lib/products";
 
@@ -87,15 +89,10 @@ export default async function ProductPage({
 
       <div className="mt-5 grid gap-8 md:grid-cols-2 md:gap-12">
         <Reveal className="relative">
-          <div className="relative aspect-square w-full overflow-hidden rounded-3xl bg-mj-cream ring-1 ring-mj-beige">
-            <Image
-              src={product.image}
-              alt={product.name}
-              fill
-              priority
-              sizes="(max-width: 768px) 100vw, 50vw"
-              className="object-cover"
-            />
+          <ProductGallery
+            productName={product.name}
+            images={productImages(product)}
+          >
             {!available && (
               <span className="absolute bottom-4 left-4 rounded-full bg-mj-ink/80 px-4 py-1.5 text-xs text-white">
                 Out of stock
@@ -118,7 +115,7 @@ export default async function ProductPage({
                 {off}% off
               </span>
             )}
-          </div>
+          </ProductGallery>
         </Reveal>
 
         <Reveal delay={120}>

@@ -150,7 +150,7 @@ Generate secrets with `openssl rand -base64 48`.
 The store has two modes behind one interface (`lib/store.ts`):
 
 - **Supabase (production)** — used automatically when `SUPABASE_URL` and `SUPABASE_SERVICE_ROLE_KEY` are set. All data (users, password hashes, sessions, orders, saved addresses, audit events) lives in Postgres over the HTTPS data API, so it survives redeploys with no volume needed.
-- **Local JSON file (development fallback)** — `${DATA_DIR}/db.json` (default `./.data/db.json`) when Supabase is not configured. Zero-setup local development.
+- **Local JSON file (development fallback)** — `${DATA_DIR}/db.json` (default `./.data/db.json`) when Supabase is not configured. Admin product photos are stored in `${DATA_DIR}/product-images` and served by the app.
 
 ### Supabase setup
 
@@ -170,7 +170,7 @@ npm run migrate:supabase
 
 The `service_role` key is server-only — never expose it with a `NEXT_PUBLIC_` prefix. RLS is enabled on every table with no policies, so the anon/authenticated keys can read nothing.
 
-**Without Supabase (file mode):** Render/Railway container filesystems are ephemeral. Without a mounted disk, accounts, sessions and orders are lost on redeploy/restart. Mount a persistent volume and set `DATA_DIR` to it.
+**Without Supabase (file mode):** Render/Railway container filesystems are ephemeral. Without a mounted disk, accounts, sessions, orders, and uploaded product photos are lost on redeploy/restart. Mount a persistent volume and set `DATA_DIR` to it.
 
 For multiple instances you must also move rate limiting and sessions to shared storage (e.g. Redis); the in-memory limiter is per instance.
 

@@ -1,5 +1,16 @@
 import { z } from "zod";
 
+const productImageSchema = z
+  .string()
+  .trim()
+  .min(1)
+  .max(600)
+  .refine(
+    (value) =>
+      value.startsWith("/") || value.includes("/storage/v1/object/public/"),
+    "Upload an image, or use a path under /images"
+  );
+
 /** Body validation for POST (create) — PATCH uses the same fields, all optional. */
 export const productSchema = z.object({
   name: z.string().trim().min(2).max(120),
@@ -19,16 +30,12 @@ export const productSchema = z.object({
    * to those two forms so next/image's remotePatterns always match and a
    * pasted URL can never break the storefront render.
    */
-  image: z
-    .string()
-    .trim()
+  image: productImageSchema,
+  images: z
+    .array(productImageSchema)
     .min(1)
-    .max(600)
-    .refine(
-      (value) =>
-        value.startsWith("/") || value.includes("/storage/v1/object/public/"),
-      "Upload an image, or use a path under /images"
-    ),
+    .max(4, "A product can have up to 4 images")
+    .optional(),
   category: z.enum(["millet", "mix", "snack"]),
   labels: z.array(z.string().trim().min(1).max(30)).max(6).default([]),
   inStock: z.boolean().default(true),

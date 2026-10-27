@@ -71,35 +71,22 @@ export async function POST(req: Request) {
     const supabase = supabaseAdmin();
 
     // Check if user is authorized as admin in our users table
-    const { data: existingUser } = await supabase
+    const { data: existingUser, error: userLookupError } = await supabase
       .from("users")
       .select("role, email")
       .eq("email", email)
       .maybeSingle();
 
-    if (existingUser) {
-      if (existingUser.role !== "admin") {
-        return jsonError(401, "Invalid credentials");
-      }
-    } else {
-      // Auto-provision admin user if authenticated via Supabase Auth
-      const { randomToken } = await import("@/lib/crypto");
-      const now = Date.now();
-      const { error: insertError } = await supabase.from("users").insert({
-        id: authData.user.id || `usr_${randomToken(12)}`,
-        email,
-        name: authData.user.user_metadata?.name || email.split("@")[0],
-        picture: authData.user.user_metadata?.avatar_url || null,
-        provider: "password",
-        passwordHash: null,
-        role: "admin",
-        createdAt: now,
-        lastLoginAt: now,
-      });
-      if (insertError) {
-        console.error("[admin/login] failed to provision user:", insertError);
-        return jsonError(401, "Invalid credentials");
-      }
+    if (userLookupError) {
+      console.error("[admin/login] failed to verify admin authorization:", userLookupError);
+      return jsonError(500, "Internal server error");
+    }
+    if (
+      !existingUser ||
+      existingUser.role !== "admin" ||
+      existingUser.email.toLowerCase() !== email
+    ) {
+      return jsonError(401, "Invalid credentials");
     }
 
     const csrf = await createAdminSession(email);

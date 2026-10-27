@@ -14,6 +14,8 @@ export type Product = {
   compareAtPrice: number | null;
   /** Path under /public, or a public Supabase Storage URL. */
   image: string;
+  /** Optional gallery; older products fall back to `image`. */
+  images?: string[];
   category: ProductCategory;
   /** Short badges on the card, e.g. "New", "Bestseller". */
   labels: string[];
