@@ -87,7 +87,6 @@ for (const path of ["/", "/products", "/cart", "/login", "/about", "/contact"]) 
 for (const [path, target] of [
   ["/account", "/login"],
   ["/booking", "/login"],
-  ["/payment", "/login"],
   ["/admin", "/admin/login"],
 ]) {
   const { res } = await req(null, path);
@@ -221,14 +220,23 @@ let reference = "";
     res.status === 201 && orderTotal === 647,
     `status ${res.status} total ${orderTotal}`
   );
+  const message = decodeURIComponent(body?.whatsappUrl || "");
   check(
-    "WhatsApp message includes name, rate, qty and total",
-    decodeURIComponent(body?.whatsappUrl || "").includes("Rate: ₹199") &&
-      decodeURIComponent(body?.whatsappUrl || "").includes("Qty: 2") &&
-      decodeURIComponent(body?.whatsappUrl || "").includes(
-        "*GRAND TOTAL: ₹647*"
-      ),
-    body?.whatsappUrl || ""
+    "WhatsApp message includes customer, items, quantities and total",
+    [
+      "Name: Alice Kumar",
+      "Phone: 9876543210",
+      "Address: 12, Green Street, Jayanagar",
+      "City: Bengaluru",
+      "Pincode: 560041",
+      "Delivery Slot: Morning (9am – 12pm)",
+      "Rate: ₹199",
+      "Qty: 2",
+      "Rate: ₹249",
+      "Qty: 1",
+      "*GRAND TOTAL: ₹647*",
+    ].every((part) => message.includes(part)),
+    message
   );
   check("order reference generated", /^MJ\d{6}-/.test(reference), reference);
 }
@@ -274,97 +282,34 @@ let reference = "";
   );
 }
 
-// --- payment intent without provider keys ---
+// --- online payments are fully disabled ---
 {
-  const { res, body } = await req(alice, "/api/payment/intent", {
+  for (const path of ["/payment", "/api/payment/intent", "/api/payment/webhook"]) {
+    const { res } = await req(alice, path);
+    check(`${path} is unavailable (404)`, res.status === 404, `status ${res.status}`);
+  }
+
+  const online = await req(alice, "/api/orders", {
     method: "POST",
     headers: {
       "Content-Type": "application/json",
       "x-csrf-token": csrf,
     },
-    body: JSON.stringify({ orderId }),
-  });
-  check(
-    "payment intent degrades gracefully without keys",
-    res.status === 200 && body?.mode === "unconfigured",
-    `status ${res.status} mode ${body?.mode}`
-  );
-}
-
-// --- payment webhook (signed, idempotent) ---
-{
-  const crypto = await import("node:crypto");
-  const secret = process.env.SMOKE_WEBHOOK_SECRET || "dev-webhook-secret-123";
-  // Unique per run so the idempotency check still exercises a fresh event
-  // even when the dev database already contains earlier smoke runs.
-  const paymentId = `pay_smoke_${Date.now()}`;
-  const providerOrderId = `order_smoke_${Date.now()}`;
-  const payload = JSON.stringify({
-    event: "payment.captured",
-    payload: {
-      payment: {
-        entity: {
-          id: paymentId,
-          order_id: providerOrderId,
-          status: "captured",
-          notes: { orderId },
-        },
+    body: JSON.stringify({
+      items: [{ productId: "mj-foxtail", qty: 1 }],
+      customer: {
+        name: "Alice",
+        phone: "9876543210",
+        address: "12 Test Street",
+        pincode: "500001",
       },
-    },
-  });
-
-  const bad = await req(null, "/api/payment/webhook", {
-    method: "POST",
-    headers: {
-      "Content-Type": "application/json",
-      "x-razorpay-signature": "deadbeef",
-    },
-    body: payload,
+      method: "online",
+    }),
   });
   check(
-    "webhook rejects an invalid signature (401)",
-    bad.res.status === 401,
-    `status ${bad.res.status}`
-  );
-
-  const signature = crypto
-    .createHmac("sha256", secret)
-    .update(payload)
-    .digest("hex");
-
-  const good = await req(null, "/api/payment/webhook", {
-    method: "POST",
-    headers: {
-      "Content-Type": "application/json",
-      "x-razorpay-signature": signature,
-    },
-    body: payload,
-  });
-  check(
-    "signed webhook marks the order paid",
-    good.res.status === 200 && good.body?.matched === true,
-    `status ${good.res.status} body ${JSON.stringify(good.body)}`
-  );
-
-  const stored = await req(alice, `/api/orders/${orderId}`);
-  check(
-    "paid status is persisted on the order",
-    stored.body?.order?.payment?.status === "paid",
-    JSON.stringify(stored.body?.order?.payment)
-  );
-
-  const replay = await req(null, "/api/payment/webhook", {
-    method: "POST",
-    headers: {
-      "Content-Type": "application/json",
-      "x-razorpay-signature": signature,
-    },
-    body: payload,
-  });
-  check(
-    "replayed webhook is idempotent",
-    replay.res.status === 200 && replay.body?.alreadyPaid === true,
-    JSON.stringify(replay.body)
+    "online order method is rejected (400)",
+    online.res.status === 400,
+    `status ${online.res.status}`
   );
 }
 
@@ -465,6 +410,78 @@ let adminCsrf = "";
     "admin can update order status",
     patched.status === 200 && patchBody?.order?.status === "shipped",
     `status ${patched.status}`
+  );
+
+  const patchStatus = (status) =>
+    req(admin, `/api/admin/orders/${orderId}`, {
+      method: "PATCH",
+      headers: {
+        "Content-Type": "application/json",
+        "x-csrf-token": adminCsrf,
+      },
+      body: JSON.stringify({ status }),
+    });
+
+  const allStates = [
+    "pending",
+    "confirmed",
+    "paid",
+    "packed",
+    "shipped",
+    "delivered",
+    "cancelled",
+  ];
+  const cycle = [];
+  for (const status of allStates) {
+    const patch = await patchStatus(status);
+    const read = await req(admin, `/api/admin/orders/${orderId}`);
+    cycle.push(
+      patch.res.status === 200 &&
+        patch.body?.order?.status === status &&
+        read.body?.order?.status === status
+    );
+  }
+  check(
+    "admin can cycle every order state and each change persists",
+    cycle.every(Boolean),
+    allStates.map((s, i) => `${s}:${cycle[i]}`).join(" ")
+  );
+
+  const invalid = await patchStatus("not-a-status");
+  check(
+    "admin rejects an invalid order state (400)",
+    invalid.res.status === 400,
+    `status ${invalid.res.status}`
+  );
+
+  await patchStatus("delivered");
+  const filtered = await req(admin, "/api/admin/orders?status=delivered");
+  check(
+    "admin status filter reflects the current order state",
+    filtered.body?.orders?.some((o) => o.id === orderId),
+    `status ${filtered.res.status}`
+  );
+
+  const customerView = await req(alice, `/api/orders/${orderId}`);
+  check(
+    "customer order view reflects the admin update",
+    customerView.body?.order?.status === "delivered",
+    customerView.body?.order?.status
+  );
+
+  const paidPatch = await req(admin, `/api/admin/orders/${orderId}`, {
+    method: "PATCH",
+    headers: {
+      "Content-Type": "application/json",
+      "x-csrf-token": adminCsrf,
+    },
+    body: JSON.stringify({ paid: true }),
+  });
+  check(
+    "mark paid updates payment and order state",
+    paidPatch.body?.order?.payment?.status === "paid" &&
+      paidPatch.body?.order?.status === "paid",
+    JSON.stringify(paidPatch.body?.order?.payment)
   );
 
   const customerCsrfAttempt = await req(alice, `/api/admin/orders/${orderId}`, {

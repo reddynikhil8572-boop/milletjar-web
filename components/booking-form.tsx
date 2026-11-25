@@ -37,7 +37,7 @@ export default function BookingForm({
   const [pincode, setPincode] = useState("");
   const [city, setCity] = useState("");
   const [slot, setSlot] = useState(SLOTS[0]);
-  const [busy, setBusy] = useState<"whatsapp" | "online" | null>(null);
+  const [busy, setBusy] = useState(false);
   const [error, setError] = useState("");
   const [selectedAddressId, setSelectedAddressId] = useState<string | null>(
     null
@@ -60,9 +60,15 @@ export default function BookingForm({
     address.trim().length >= 5 &&
     pincode.trim().length >= 4;
 
-  async function submit(method: "whatsapp" | "online") {
+  async function submit(event: React.FormEvent) {
+    event.preventDefault();
     if (!valid || busy) return;
-    setBusy(method);
+
+    // Open the tab during the click so popup blockers cannot swallow it,
+    // then point it at the server-built WhatsApp message once the order is
+    // created. If it is blocked, the order page still has a direct link.
+    const tab = window.open("", "_blank");
+    setBusy(true);
     setError("");
 
     const result = await mutate<OrderResponse>("/api/orders", {
@@ -75,20 +81,21 @@ export default function BookingForm({
         city: city.trim() || undefined,
         slot,
       },
-      method,
     });
 
     if (!result.ok) {
+      tab?.close();
       setError(result.error);
-      setBusy(null);
+      setBusy(false);
       return;
     }
 
     const { whatsappUrl, next } = result.data;
     cart.clear();
 
-    if (method === "whatsapp") {
-      window.open(whatsappUrl, "_blank", "noopener,noreferrer");
+    if (tab && !tab.closed) {
+      tab.opener = null;
+      tab.location.href = whatsappUrl;
     }
     router.push(`${next}?new=1`);
   }
@@ -114,10 +121,7 @@ export default function BookingForm({
     <div className="grid grid-cols-1 gap-8 lg:grid-cols-[1.4fr_1fr]">
       <Reveal>
       <form
-        onSubmit={(event) => {
-          event.preventDefault();
-          submit("online");
-        }}
+        onSubmit={submit}
         className="space-y-4 rounded-2xl border border-mj-beige bg-white p-5 sm:p-6"
       >
         <div>
@@ -275,27 +279,20 @@ export default function BookingForm({
           </select>
         </label>
 
-        <div className="flex flex-col gap-2 pt-2 sm:flex-row">
+        <div className="pt-2">
           <button
             type="submit"
-            disabled={!valid || busy !== null}
-            className="mj-press flex-1 rounded-full bg-mj-green px-5 py-3 text-sm font-medium text-white transition-all duration-200 hover:bg-mj-green-700 hover:shadow-sm active:scale-[0.98] disabled:cursor-not-allowed disabled:opacity-50"
+            disabled={!valid || busy}
+            className="mj-press w-full rounded-full bg-mj-green px-5 py-3 text-sm font-medium text-white transition-all duration-200 hover:bg-mj-green-700 hover:shadow-sm active:scale-[0.98] disabled:cursor-not-allowed disabled:opacity-50"
           >
-            {busy === "online" ? "Creating order…" : "Continue to payment"}
+            {busy ? "Creating order & opening WhatsApp…" : "Order via WhatsApp"}
           </button>
-          <button
-            type="button"
-            onClick={() => submit("whatsapp")}
-            disabled={!valid || busy !== null}
-            className="mj-press flex-1 rounded-full border border-mj-green px-5 py-3 text-sm font-medium text-mj-green transition-all duration-200 hover:bg-mj-cream active:scale-[0.98] disabled:cursor-not-allowed disabled:opacity-50"
-          >
-            {busy === "whatsapp" ? "Opening WhatsApp…" : "Order on WhatsApp"}
-          </button>
+          <p className="mt-2 text-center text-xs leading-relaxed text-mj-brown">
+            Your complete order is sent to our WhatsApp number for
+            confirmation. Final prices are calculated from the current catalog
+            before the order is created.
+          </p>
         </div>
-        <p className="text-xs leading-relaxed text-mj-brown">
-          Final prices are calculated on our server from the current catalog
-          before your order is created.
-        </p>
       </form>
       </Reveal>
 

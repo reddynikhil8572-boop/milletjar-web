@@ -4,6 +4,7 @@ import { requireUser } from "@/lib/session";
 import { readDB } from "@/lib/store";
 import { whatsappLink } from "@/lib/whatsapp";
 import Reveal from "@/components/reveal";
+import OrderStatusRefresh from "@/components/order-status-refresh";
 
 export const dynamic = "force-dynamic";
 
@@ -22,7 +23,7 @@ export default async function OrderPage({
   searchParams,
 }: {
   params: Promise<{ id: string }>;
-  searchParams: Promise<{ new?: string; paid?: string }>;
+  searchParams: Promise<{ new?: string }>;
 }) {
   const auth = await requireUser();
   if (!auth) {
@@ -38,21 +39,14 @@ export default async function OrderPage({
   );
   if (!order) notFound();
 
-  const isPaid = order.payment.status === "paid";
-
   return (
     <div className="mx-auto max-w-3xl px-4 py-10 sm:px-6 lg:px-8">
+      <OrderStatusRefresh />
       {flags.new && (
         <div className="mj-rise mb-6 rounded-2xl border border-emerald-200 bg-emerald-50 px-4 py-3 text-sm text-emerald-800">
           Order created. We will confirm it shortly.
         </div>
       )}
-      {flags.paid && isPaid && (
-        <div className="mj-rise mb-6 rounded-2xl border border-emerald-200 bg-emerald-50 px-4 py-3 text-sm text-emerald-800">
-          Payment received. Thank you!
-        </div>
-      )}
-
       <Reveal className="flex flex-wrap items-start justify-between gap-3">
         <div>
           <h1 className="text-2xl font-semibold text-mj-ink">
@@ -105,12 +99,6 @@ export default async function OrderPage({
             <dt>Total</dt>
             <dd className="text-mj-green">₹{order.total}</dd>
           </div>
-          <div className="flex justify-between pt-1 text-xs text-mj-brown">
-            <dt>Payment</dt>
-            <dd className="capitalize">
-              {order.payment.method} · {order.payment.status}
-            </dd>
-          </div>
         </dl>
       </section>
       </Reveal>
@@ -142,16 +130,8 @@ export default async function OrderPage({
           rel="noopener noreferrer"
           className="mj-press rounded-full bg-mj-green px-5 py-2.5 text-sm font-medium text-white hover:bg-mj-green-700"
         >
-          Send order on WhatsApp
+          Confirm order on WhatsApp
         </a>
-        {!isPaid && order.status !== "cancelled" && (
-          <Link
-            href={`/payment?order=${order.id}`}
-            className="mj-press rounded-full border border-mj-green px-5 py-2.5 text-sm font-medium text-mj-green hover:bg-mj-cream"
-          >
-            Complete payment
-          </Link>
-        )}
         <Link
           href="/account"
           className="mj-press rounded-full border border-mj-beige px-5 py-2.5 text-sm font-medium text-mj-ink hover:bg-mj-cream"
@@ -159,6 +139,10 @@ export default async function OrderPage({
           My orders
         </Link>
       </Reveal>
+      <p className="mt-3 text-xs text-mj-brown">
+        Orders and payment are confirmed directly on WhatsApp. Tap the button
+        above if the chat did not open automatically.
+      </p>
     </div>
   );
 }

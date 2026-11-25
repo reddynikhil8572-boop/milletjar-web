@@ -4,9 +4,8 @@ import { randomToken } from "@/lib/crypto";
 import { guardUser, jsonError, serverError } from "@/lib/guard";
 import { priceCart } from "@/lib/pricing";
 import { readDB, writeDB } from "@/lib/store";
-import { orderMessage } from "@/lib/whatsapp";
-import { env } from "@/lib/env";
-import type { Order, PaymentMethod } from "@/lib/types";
+import { whatsappLink } from "@/lib/whatsapp";
+import type { Order } from "@/lib/types";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -29,7 +28,8 @@ const schema = z.object({
     city: z.string().max(80).optional(),
     slot: z.string().max(80).optional(),
   }),
-  method: z.enum(["whatsapp", "online", "cod"]).default("whatsapp"),
+  // WhatsApp is the only order channel. The field remains for old clients.
+  method: z.literal("whatsapp").default("whatsapp"),
 });
 
 function reference(): string {
@@ -80,7 +80,7 @@ export async function POST(req: Request) {
       customer: parsed.data.customer,
       status: "pending",
       payment: {
-        method: parsed.data.method as PaymentMethod,
+        method: "whatsapp",
         status: "unpaid",
       },
       createdAt: now,
@@ -134,16 +134,14 @@ export async function POST(req: Request) {
       }
     });
 
-    const whatsappUrl = `https://wa.me/${env.whatsappNumber}?text=${encodeURIComponent(
-      orderMessage(order)
-    )}`;
+    const whatsappUrl = whatsappLink(order);
 
     return NextResponse.json(
       {
         ok: true,
         order,
         whatsappUrl,
-        next: parsed.data.method === "online" ? `/payment?order=${order.id}` : `/order/${order.id}`,
+        next: `/order/${order.id}`,
       },
       { status: 201 }
     );

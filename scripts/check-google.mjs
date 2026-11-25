@@ -16,7 +16,7 @@ async function main() {
     process.exit(1);
   }
 
-  const start = await fetch(`${BASE}/api/auth/google/start?next=/payment`, {
+  const start = await fetch(`${BASE}/api/auth/google/start?next=/account`, {
     redirect: "manual",
     cache: "no-store",
   });

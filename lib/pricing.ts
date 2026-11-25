@@ -16,7 +16,7 @@ export type PricedCart = {
 
 /**
  * Recomputes the cart from the server-side catalog. Client-supplied prices
- * are never trusted, which is what makes the payment amount safe.
+ * are never trusted, so the totals sent to WhatsApp are always accurate.
  */
 export async function priceCart(input: CartInput): Promise<PricedCart> {
   const products = await getProducts();

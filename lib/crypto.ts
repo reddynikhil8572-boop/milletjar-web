@@ -15,10 +15,6 @@ export function sha256(value: string): string {
   return crypto.createHash("sha256").update(value).digest("hex");
 }
 
-export function hmac(secret: string, payload: string): string {
-  return crypto.createHmac("sha256", secret).update(payload).digest("base64url");
-}
-
 /** Constant-time string comparison that never throws on length mismatch. */
 export function safeEqual(a: string, b: string): boolean {
   const bufA = Buffer.from(a, "utf8");

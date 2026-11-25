@@ -1,7 +1,7 @@
 import { env } from "./env";
 import type { Order } from "./types";
 
-/** WhatsApp message body for an order, including name, rate, qty and total. */
+/** WhatsApp message body: full customer, item, quantity and total details. */
 export function orderMessage(order: Order): string {
   const lines: string[] = [
     "*MILLET JAR - NEW ORDER*",
@@ -10,8 +10,9 @@ export function orderMessage(order: Order): string {
     `Name: ${order.customer.name}`,
     `Phone: ${order.customer.phone}`,
     `Address: ${order.customer.address}`,
-    `Pincode: ${order.customer.pincode}`,
   ];
+  if (order.customer.city) lines.push(`City: ${order.customer.city}`);
+  lines.push(`Pincode: ${order.customer.pincode}`);
   if (order.customer.slot) lines.push(`Delivery Slot: ${order.customer.slot}`);
   lines.push(`Order Ref: ${order.reference}`, "");
   lines.push("*Order Details:*", "--------------------------");

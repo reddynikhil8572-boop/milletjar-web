@@ -44,7 +44,6 @@ check(
 for (const [path, target] of [
   ["/account", "/login"],
   ["/booking", "/login"],
-  ["/payment", "/login"],
   ["/admin", "/admin/login"],
 ]) {
   const res = await get(path);
@@ -72,12 +71,12 @@ const adminLogin = await get("/api/admin/auth/login", {
   headers: { "Content-Type": "application/json" },
   body: JSON.stringify({
     email: "admin@milletjar.in",
-    password: "admin12345",
+    password: "definitely-not-the-password",
   }),
 });
 check(
-  "plaintext ADMIN_PASSWORD is rejected in production",
-  adminLogin.status === 503 || adminLogin.status === 401,
+  "admin login rejects invalid credentials",
+  adminLogin.status === 401,
   `status ${adminLogin.status}`
 );
 

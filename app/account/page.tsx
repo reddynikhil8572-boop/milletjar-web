@@ -4,6 +4,7 @@ import { requireUser } from "@/lib/session";
 import { readDB } from "@/lib/store";
 import SignOutButton from "@/components/sign-out";
 import Reveal from "@/components/reveal";
+import OrderStatusRefresh from "@/components/order-status-refresh";
 
 export const dynamic = "force-dynamic";
 
@@ -32,10 +33,9 @@ export default async function AccountPage() {
       .sort((a, b) => b.createdAt - a.createdAt)
   );
 
-  const paidCount = orders.filter((o) => o.payment.status === "paid").length;
-
   return (
     <div className="mx-auto max-w-5xl px-4 py-10 sm:px-6 lg:px-8">
+      <OrderStatusRefresh />
       <Reveal className="flex flex-wrap items-start justify-between gap-4">
         <div className="flex items-center gap-4">
           <div className="flex h-14 w-14 items-center justify-center rounded-full bg-mj-green text-lg font-semibold text-white">
@@ -59,7 +59,7 @@ export default async function AccountPage() {
         </div>
       </Reveal>
 
-      <div className="mt-8 grid grid-cols-2 gap-3 sm:grid-cols-3">
+      <div className="mt-8 grid grid-cols-2 gap-3">
         <Reveal delay={0}>
         <div className="h-full rounded-2xl border border-mj-beige bg-white p-4">
           <div className="text-xs uppercase tracking-wide text-mj-brown">
@@ -67,16 +67,6 @@ export default async function AccountPage() {
           </div>
           <div className="mt-1 text-2xl font-semibold text-mj-ink">
             {orders.length}
-          </div>
-        </div>
-        </Reveal>
-        <Reveal delay={60}>
-        <div className="h-full rounded-2xl border border-mj-beige bg-white p-4">
-          <div className="text-xs uppercase tracking-wide text-mj-brown">
-            Paid
-          </div>
-          <div className="mt-1 text-2xl font-semibold text-mj-ink">
-            {paidCount}
           </div>
         </div>
         </Reveal>
@@ -154,23 +144,14 @@ export default async function AccountPage() {
                 </div>
               </div>
 
-              {order.payment.status !== "paid" &&
-                order.status !== "cancelled" && (
-                  <div className="mt-3 flex gap-2 border-t border-mj-beige pt-3">
-                    <Link
-                      href={`/payment?order=${order.id}`}
-                      className="mj-press rounded-full bg-mj-green px-4 py-1.5 text-xs font-medium text-white hover:bg-mj-green-700"
-                    >
-                      Complete payment
-                    </Link>
-                    <Link
-                      href={`/order/${order.id}`}
-                      className="mj-press rounded-full border border-mj-beige px-4 py-1.5 text-xs font-medium text-mj-ink hover:bg-mj-cream"
-                    >
-                      View order
-                    </Link>
-                  </div>
-                )}
+              <div className="mt-3 flex gap-2 border-t border-mj-beige pt-3">
+                <Link
+                  href={`/order/${order.id}`}
+                  className="mj-press rounded-full border border-mj-beige px-4 py-1.5 text-xs font-medium text-mj-ink hover:bg-mj-cream"
+                >
+                  View order & WhatsApp chat
+                </Link>
+              </div>
             </Reveal>
           ))}
         </ul>

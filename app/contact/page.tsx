@@ -101,7 +101,7 @@ export default function ContactPage() {
         <Link href="/account" className="text-mj-green hover:underline">
           Check your account
         </Link>{" "}
-        for status and payment.
+        for order status and WhatsApp updates.
       </p>
     </div>
   );

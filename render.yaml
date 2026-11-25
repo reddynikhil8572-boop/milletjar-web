@@ -23,11 +23,7 @@ services:
         sync: false
       - key: AUTH_SECRET
         generateValue: true
-      # Admin auth (must differ from AUTH_SECRET)
-      - key: ADMIN_EMAIL
-        sync: false
-      - key: ADMIN_PASSWORD_HASH
-        sync: false
+      # Admin auth (separate secret; accounts live in Supabase Auth)
       - key: ADMIN_AUTH_SECRET
         generateValue: true
       # Supabase data store (users, sessions, orders, saved addresses).
@@ -35,15 +31,6 @@ services:
       - key: SUPABASE_URL
         sync: false
       - key: SUPABASE_SERVICE_ROLE_KEY
-        sync: false
-      # Payments (optional)
-      - key: PAYMENT_PROVIDER
-        value: razorpay
-      - key: PAYMENT_KEY_ID
-        sync: false
-      - key: PAYMENT_KEY_SECRET
-        sync: false
-      - key: PAYMENT_WEBHOOK_SECRET
         sync: false
       # Uncomment together with the disk block below to keep data across deploys.
       # - key: DATA_DIR

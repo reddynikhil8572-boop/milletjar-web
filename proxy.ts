@@ -19,7 +19,6 @@ function contentSecurityPolicy(): string {
     "'self'",
     "'unsafe-inline'",
     isDev ? "'unsafe-eval'" : "",
-    "https://checkout.razorpay.com",
   ]
     .filter(Boolean)
     .join(" ");
@@ -31,7 +30,7 @@ function contentSecurityPolicy(): string {
     "img-src 'self' data: blob: https:",
     "font-src 'self' data:",
     "connect-src 'self' https:",
-    "frame-src 'self' https://api.razorpay.com https://checkout.razorpay.com",
+    "frame-src 'self'",
     "frame-ancestors 'none'",
     "base-uri 'self'",
     "form-action 'self' https://wa.me https://api.whatsapp.com",
@@ -47,7 +46,7 @@ export function proxy(req: NextRequest) {
   res.headers.set("Referrer-Policy", "strict-origin-when-cross-origin");
   res.headers.set(
     "Permissions-Policy",
-    "camera=(), microphone=(), geolocation=(), payment=(self)"
+    "camera=(), microphone=(), geolocation=(), payment=()"
   );
   res.headers.set("X-DNS-Prefetch-Control", "off");
   res.headers.set(

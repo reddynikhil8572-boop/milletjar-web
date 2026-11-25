@@ -1,6 +1,6 @@
 import { redirect } from "next/navigation";
 import { getAdmin } from "@/lib/admin";
-import { adminConfigured } from "@/lib/env";
+import { supabaseConfigured } from "@/lib/env";
 import AdminLoginForm from "@/components/admin-login-form";
 
 export const dynamic = "force-dynamic";
@@ -17,11 +17,12 @@ export default async function AdminLoginPage() {
   return (
     <div className="flex min-h-screen items-center justify-center bg-mj-cream/40 px-4 py-12">
       <div className="w-full max-w-sm">
-        {!adminConfigured() && (
+        {!supabaseConfigured() && (
           <div className="mb-4 rounded-xl border border-amber-200 bg-amber-50 px-4 py-3 text-xs leading-relaxed text-amber-800">
-            Admin sign-in is not configured. Set <code>ADMIN_EMAIL</code> and{" "}
-            <code>ADMIN_PASSWORD_HASH</code> (or <code>ADMIN_PASSWORD</code>{" "}
-            for local development).
+            Admin sign-in is not configured. Set <code>SUPABASE_URL</code>{" "}
+            and <code>SUPABASE_SERVICE_ROLE_KEY</code>, run{" "}
+            <code>supabase/schema.sql</code> in the Supabase SQL Editor, then
+            create an admin with <code>npm run create:admin</code>.
           </div>
         )}
         <AdminLoginForm />

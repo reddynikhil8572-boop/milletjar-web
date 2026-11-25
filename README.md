@@ -9,21 +9,21 @@ Tagline: _Fresh from Farm to Your Family._
 **Storefront**
 
 - Home, products, about, contact
-- Dedicated pages for **cart**, **login**, **booking (delivery details)**, **payment**, **account**, and **order confirmation**
+- Dedicated pages for **cart**, **login**, **booking (delivery details)**, **account**, and **order confirmation**
 - Cart persisted in `localStorage`; the server reprices every order from the product catalog
-- WhatsApp ordering with a pre-filled message containing product name, rate, quantity, line total and grand total
+- WhatsApp is the **only** ordering channel: the pre-filled message contains customer name, phone, address, city, pincode, delivery slot, every item with rate/quantity/line total, and the grand total
 
 **Accounts**
 
 - Google sign-in (OAuth 2.0 Authorization Code + PKCE, no third-party auth library)
 - Server-side sessions in httpOnly cookies (`mj_session`), 7-day sliding expiry
-- Account page with order history and payment status
+- Account and order pages show live order status (auto-refresh on tab focus and every 15 seconds after an admin update)
 
-**Payments**
+**Ordering & payments**
 
-- Optional Razorpay online payments (server-created payment intents, amount taken from the stored order)
-- HMAC-verified, idempotent webhook that marks orders paid
-- WhatsApp confirmation remains available if payments are not configured
+- **No online payment gateways.** Razorpay/RuPay/UPI/card/net-banking scripts, intents and webhooks have been removed.
+- The checkout button is **Order via WhatsApp**. It creates the order, opens a WhatsApp chat with the full order details, and links to the order confirmation page.
+- Payment and order confirmation are handled directly with the customer on WhatsApp.
 
 **Admin**
 
@@ -33,7 +33,7 @@ Tagline: _Fresh from Farm to Your Family._
   - separate secret (`ADMIN_AUTH_SECRET`)
   - separate session table and CSRF token
   - 2-hour lifetime, IP lockout after repeated failures
-- Dashboard at `/admin`: orders, revenue, status updates, mark-as-paid
+- Dashboard at `/admin`: orders, revenue, status updates
 
 ## Local setup
 
@@ -60,17 +60,15 @@ powershell -ExecutionPolicy Bypass -File scripts\dev-detached.ps1 -Port 3000
 APP_URL=http://localhost:3000
 NEXT_PUBLIC_WHATSAPP_NUMBER=919999999999
 AUTH_SECRET=<any long random string>
-ADMIN_EMAIL=admin@milletjar.in
-ADMIN_PASSWORD=admin12345          # development only
 ADMIN_AUTH_SECRET=<another random string>
+SUPABASE_URL=https://<project-ref>.supabase.co
+SUPABASE_SERVICE_ROLE_KEY=<service_role key>
 ```
 
-With `ADMIN_PASSWORD` (no hash) admin login works **only** when `NODE_ENV !== "production"`.
-For production generate a hash:
+Then create the admin account (see [Admin](#admin)):
 
 ```bash
-npm run hash:password -- "your-strong-password"
-# -> scrypt$<salt>$<key>   (put this in ADMIN_PASSWORD_HASH)
+npm run create:admin -- admin@milletjar.in "a-strong-password"
 ```
 
 ### Google sign-in setup
@@ -94,9 +92,22 @@ When `NODE_ENV !== "production"`, a development sign-in form appears on `/login`
 
 ### Admin
 
+Admin sign-in authenticates against **Supabase Auth**; the user must also have
+`role = 'admin'` in `public.users`. Provision or repair the account with:
+
+```bash
+npm run create:admin -- admin@milletjar.in "a-strong-password"
+```
+
+Omit the password to have one generated and printed once. The script creates
+the Supabase Auth user (email confirmed), grants the admin role, and is safe to
+re-run to rotate the password.
+
 - `/admin/login` — not linked from the storefront
 - `/admin` — dashboard (orders, revenue, status updates)
-- Default dev credentials from `.env.local`: `admin@milletjar.in` / `admin12345`
+
+There is no environment-variable admin password; the credentials live in
+Supabase, so rotating them does not require a redeploy.
 
 ## Testing
 
@@ -106,7 +117,7 @@ With the dev server running:
 npm run test:smoke -- http://localhost:3000
 ```
 
-46 checks covering page rendering, anonymous redirects, session cookies, CSRF enforcement, server-side repricing, cross-user order isolation, payment webhook signatures/idempotency, admin isolation and admin CSRF.
+49 checks covering page rendering, anonymous redirects, session cookies, CSRF enforcement, server-side repricing, complete WhatsApp order content, disabled online-payment routes, cross-user order isolation, admin isolation, admin CSRF and every admin order-state transition.
 
 Production-mode checks (run against `npm run build && npm run start`):
 
@@ -114,7 +125,7 @@ Production-mode checks (run against `npm run build && npm run start`):
 npm run test:prod -- http://localhost:3000
 ```
 
-Confirms the dev sign-in backdoor is disabled, plaintext admin passwords are rejected and the security headers are present.
+Confirms the dev sign-in backdoor is disabled, invalid admin credentials are rejected and the security headers are present.
 
 Other checks:
 
@@ -133,15 +144,12 @@ npm run build
 | `AUTH_SECRET` | Production | Customer session secret (32+ random chars) |
 | `ADMIN_AUTH_SECRET` | Production | Admin session secret, must differ from `AUTH_SECRET` |
 | `GOOGLE_CLIENT_ID` / `GOOGLE_CLIENT_SECRET` | For Google login | OAuth web client credentials |
-| `ADMIN_EMAIL` | For admin | Admin account email |
-| `ADMIN_PASSWORD_HASH` | Production admin | scrypt hash from `npm run hash:password` |
-| `ADMIN_PASSWORD` | Dev only | Plain admin password, ignored when `NODE_ENV=production` |
-| `SUPABASE_URL` | Supabase data store | e.g. `https://<project-ref>.supabase.co`; unset = local file store |
-| `SUPABASE_SERVICE_ROLE_KEY` | Supabase data store | service_role key from Project Settings → API; run `supabase/schema.sql` first, then `npm run migrate:supabase` |
-| `PAYMENT_PROVIDER` | No | Defaults to `razorpay` |
-| `PAYMENT_KEY_ID` / `PAYMENT_KEY_SECRET` | For online pay | Razorpay API keys |
-| `PAYMENT_WEBHOOK_SECRET` | For online pay | Razorpay webhook signing secret |
+| `SUPABASE_URL` | Admin login + data store | e.g. `https://<project-ref>.supabase.co`; unset = local file store and admin login unavailable |
+| `SUPABASE_SERVICE_ROLE_KEY` | Admin login + data store | service_role key from Project Settings → API; run `supabase/schema.sql` first, then `npm run migrate:supabase` |
 | `DATA_DIR` | Recommended | Directory for `db.json` (default `.data`) |
+
+Payment gateway keys are intentionally not read by the app. Do not configure
+`PAYMENT_*` variables — they have no effect.
 
 Generate secrets with `openssl rand -base64 48`.
 
@@ -205,7 +213,7 @@ Highlights:
 - Every protected API verifies the server-side session on every request
 - All mutations require a session-bound CSRF token (`x-csrf-token`) and same-origin request
 - Prices and totals are recomputed server-side; client prices are ignored
-- Webhook payloads verified with HMAC-SHA256 and processed idempotently
+- No payment gateway scripts or webhooks; the CSP does not allow payment domains
 - Admin auth is fully isolated from customer auth
 - CSP, HSTS, `X-Frame-Options: DENY`, `nosniff`, no-store on APIs, `noindex` on admin/API
 
@@ -213,4 +221,4 @@ Highlights:
 
 - `NEXT_PUBLIC_WHATSAPP_NUMBER` still uses the placeholder `919999999999` until the real business number is supplied.
 - Google login requires real OAuth credentials; the button is shown but returns a clear error until they are set.
-- The `checkout` page from the previous version was removed in favour of `/cart` → `/booking` → `/payment`.
+- The `checkout` and `/payment` pages from the previous version were removed in favour of `/cart` → `/booking` → `/order/[id]`, with WhatsApp as the only order channel.

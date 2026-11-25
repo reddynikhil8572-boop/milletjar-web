@@ -96,6 +96,7 @@ export type OrderStatus =
   | "delivered"
   | "cancelled";
 
+/** Legacy values are kept so old order records still type-check. */
 export type PaymentMethod = "whatsapp" | "online" | "cod";
 export type PaymentStatus = "unpaid" | "paid" | "failed";
 
