@@ -1,32 +1,30 @@
 import { NextResponse } from "next/server";
 import type { NextRequest } from "next/server";
+import { clientIp } from "@/lib/client-ip";
 
 // Coarse per-IP limiter for the edge. Route handlers enforce their own,
-// stricter limits (see lib/guard.ts).
+// stricter limits (lib/guard.ts uses the shared Postgres limiter in prod).
 const hits = new Map<string, { count: number; resetAt: number }>();
 const WINDOW_MS = 60_000;
 const MAX = 120;
+let lastSweep = 0;
 
-function clientIp(req: NextRequest): string {
-  const forwarded = req.headers.get("x-forwarded-for");
-  if (forwarded) return forwarded.split(",")[0].trim();
-  return req.headers.get("x-real-ip") || "unknown";
-}
-
-function contentSecurityPolicy(): string {
+function contentSecurityPolicy(nonce: string): string {
   const isDev = process.env.NODE_ENV !== "production";
   const script = [
     "'self'",
-    "'unsafe-inline'",
+    `'nonce-${nonce}'`,
+    "'strict-dynamic'",
     isDev ? "'unsafe-eval'" : "",
   ]
     .filter(Boolean)
     .join(" ");
+  const style = ["'self'", `'nonce-${nonce}'`].join(" ");
 
   return [
     "default-src 'self'",
     `script-src ${script}`,
-    "style-src 'self' 'unsafe-inline'",
+    `style-src ${style}`,
     "img-src 'self' data: blob: https:",
     "font-src 'self' data:",
     "connect-src 'self' https:",
@@ -38,9 +36,7 @@ function contentSecurityPolicy(): string {
   ].join("; ");
 }
 
-export function proxy(req: NextRequest) {
-  const res = NextResponse.next();
-
+function applySecurityHeaders(res: NextResponse, nonce: string): void {
   res.headers.set("X-Content-Type-Options", "nosniff");
   res.headers.set("X-Frame-Options", "DENY");
   res.headers.set("Referrer-Policy", "strict-origin-when-cross-origin");
@@ -53,7 +49,16 @@ export function proxy(req: NextRequest) {
     "Strict-Transport-Security",
     "max-age=31536000; includeSubDomains; preload"
   );
-  res.headers.set("Content-Security-Policy", contentSecurityPolicy());
+  res.headers.set("Content-Security-Policy", contentSecurityPolicy(nonce));
+}
+
+export function proxy(req: NextRequest) {
+  const nonce = Buffer.from(crypto.randomUUID()).toString("base64");
+  const requestHeaders = new Headers(req.headers);
+  requestHeaders.set("x-nonce", nonce);
+
+  const res = NextResponse.next({ request: { headers: requestHeaders } });
+  applySecurityHeaders(res, nonce);
 
   if (req.nextUrl.pathname.startsWith("/api/")) {
     res.headers.set("Cache-Control", "no-store, max-age=0");
@@ -61,24 +66,33 @@ export function proxy(req: NextRequest) {
 
     const ip = clientIp(req);
     const now = Date.now();
+    if (now - lastSweep > WINDOW_MS) {
+      lastSweep = now;
+      for (const [key, entry] of hits) {
+        if (entry.resetAt <= now) hits.delete(key);
+      }
+    }
+
     const entry = hits.get(ip);
     if (!entry || entry.resetAt <= now) {
       hits.set(ip, { count: 1, resetAt: now + WINDOW_MS });
     } else {
       entry.count += 1;
       if (entry.count > MAX) {
-        return new NextResponse(
+        const blocked = new NextResponse(
           JSON.stringify({ error: "Too many requests" }),
           {
             status: 429,
             headers: {
               "Content-Type": "application/json",
-              "Retry-After": String(
-                Math.ceil((entry.resetAt - now) / 1000)
-              ),
+              "Retry-After": String(Math.ceil((entry.resetAt - now) / 1000)),
             },
           }
         );
+        applySecurityHeaders(blocked, nonce);
+        blocked.headers.set("Cache-Control", "no-store, max-age=0");
+        blocked.headers.set("X-Robots-Tag", "noindex");
+        return blocked;
       }
     }
   }

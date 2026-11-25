@@ -1,6 +1,8 @@
 "use client";
 
 import { useCallback, useEffect, useState } from "react";
+import { NEXT_STATUSES, ORDER_STATUSES } from "@/lib/order-state";
+import type { OrderStatus } from "@/lib/types";
 
 type AdminOrder = {
   id: string;
@@ -15,15 +17,14 @@ type AdminOrder = {
 
 type Stats = { total: number; paid: number; revenue: number; customers: number };
 
-const STATUSES = [
-  "pending",
-  "confirmed",
-  "paid",
-  "packed",
-  "shipped",
-  "delivered",
-  "cancelled",
-];
+const STATUSES = ORDER_STATUSES;
+
+function statusOptions(status: string): OrderStatus[] {
+  const current = ORDER_STATUSES.includes(status as OrderStatus)
+    ? (status as OrderStatus)
+    : "pending";
+  return [current, ...NEXT_STATUSES[current]];
+}
 
 export default function AdminOrders({ csrf }: { csrf: string }) {
   const [orders, setOrders] = useState<AdminOrder[]>([]);
@@ -206,20 +207,21 @@ export default function AdminOrders({ csrf }: { csrf: string }) {
                         }
                         className="rounded-full border border-mj-beige bg-white px-3 py-1.5 text-xs capitalize text-mj-ink focus:outline-none focus:ring-2 focus:ring-mj-green/30"
                       >
-                        {STATUSES.map((status) => (
+                        {statusOptions(order.status).map((status) => (
                           <option key={status} value={status}>
                             {status}
                           </option>
                         ))}
                       </select>
-                      {order.payment.status !== "paid" && (
+                      {order.payment.status !== "paid" &&
+                        order.status !== "cancelled" && (
                         <button
                           type="button"
                           disabled={updating === order.id}
                           onClick={() => updateOrder(order.id, { paid: true })}
                           className="rounded-full bg-mj-green px-3 py-1.5 text-xs font-medium text-white hover:bg-mj-green-700 disabled:opacity-60"
                         >
-                          Mark paid
+                          Mark paid (offline)
                         </button>
                       )}
                     </div>

@@ -8,6 +8,11 @@ import OrderStatusRefresh from "@/components/order-status-refresh";
 
 export const dynamic = "force-dynamic";
 
+export const metadata = {
+  title: "Your order | Millet Jar",
+  robots: { index: false, follow: false },
+};
+
 const STATUS_STYLES: Record<string, string> = {
   pending: "bg-amber-50 text-amber-700 ring-amber-200",
   confirmed: "bg-blue-50 text-blue-700 ring-blue-200",

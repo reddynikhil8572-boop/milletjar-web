@@ -5,12 +5,11 @@
 | Area | Customer | Admin |
 | --- | --- | --- |
 | Endpoint | `/api/auth/*` | `/api/admin/auth/*` |
-| Login | Google OAuth 2.0 (code + PKCE) | Supabase Auth (email + password) |
+| Login | Email/user ID + password, or Google OAuth 2.0 (code + PKCE) | Supabase Auth (email + password) |
 | Cookie | `mj_session` (httpOnly, SameSite=Lax) | `mj_admin_session` (httpOnly, SameSite=Strict) |
 | Session store | `db.sessions` | `db.adminSessions` |
 | Secret | `AUTH_SECRET` | `ADMIN_AUTH_SECRET` (different value) |
 | Lifetime | 7 days, sliding | 2 hours |
-| CSRF token | per session | per admin session |
 
 The two systems share no cookies, no tokens, no session table and no secret. A valid customer session cannot reach any admin endpoint, and an admin session cannot act as a customer.
 
@@ -18,12 +17,14 @@ The two systems share no cookies, no tokens, no session table and no secret. A v
 
 **Authentication**
 
-- Google OAuth Authorization Code flow with PKCE (S256) and a single-use `state` bound to an httpOnly cookie.
-- Callback requires a matching state cookie, an unexpired server-side state record (< 10 min) and a Google-verified email.
-- New session token on every login; only the SHA-256 hash of the token is stored server-side.
-- Session records carry absolute expiry, are pruned, and are removed on sign-out.
-- Maximum 5 active sessions per user (oldest dropped).
-- Development sign-in (`/api/auth/dev-login`) returns 404 when `NODE_ENV=production`.
+- Password login accepts either the email address or the `usr_...` account ID. Failures are generic and still run one scrypt verification against a dummy hash.
+- Password hashes use scrypt with a per-account random salt; plaintext passwords are never stored.
+- Self-signup is disabled in production until an email-verification flow is added. Production accounts are admin-provisioned.
+- Google OAuth uses PKCE (S256) and a single-use `state` bound to an httpOnly cookie. The callback requires a matching state cookie, an unexpired server-side state record (< 10 min), a verified email, and a stable Google `sub`.
+- Accounts are matched by Google `sub` first. Email-only matches are linked only for legacy Google accounts; password accounts are never silently taken over.
+- New session token on every login; only the SHA-256 hash of the token is stored server-side. Sessions have absolute expiry and are pruned and revoked on sign-out.
+- Maximum 5 active customer sessions; admin role is re-checked on every request so revocation takes effect immediately.
+- Development sign-in (`/api/auth/dev-login`) returns 404 in production.
 
 **Per-request verification**
 
@@ -32,29 +33,37 @@ Every protected route calls `guardUser()` / `guardAdmin()` (`lib/guard.ts`), whi
 1. applies a per-IP, per-endpoint rate limit;
 2. resolves the session server-side and checks expiry;
 3. for mutations, verifies the `x-csrf-token` header against the session token in constant time;
-4. rejects cross-origin requests (`Origin` must match the app origin).
+4. requires a same-origin `Origin` header on state-changing public endpoints.
 
 Pages (`/account`, `/booking`, `/order/[id]`, `/admin`) perform the same server-side verification before rendering.
+
+**Rate limiting**
+
+- Route limits are backed by Supabase's atomic `mj_rate_limit()` RPC in production, so all instances share counters.
+- Behind a trusted proxy the right-most `X-Forwarded-For` entry is used; headers containing non-IP values are ignored. Set `TRUST_PROXY=false` only when directly exposed.
+- The edge proxy keeps a coarse best-effort limiter; route guards are authoritative.
+- 429 responses include `Retry-After`.
 
 **CSRF**
 
 - Token is issued in a same-origin JSON response (`/api/auth/me`), never in a cookie, and must be echoed in `x-csrf-token`.
-- A cross-site attacker cannot read the response, so cannot forge the header.
 - Cookies are `SameSite=Lax` (customer) / `Strict` (admin) as defence in depth.
+- Redirects after login accept only local paths; `//`, backslashes and encoded backslashes are rejected.
 
 **Authorization**
 
 - Orders are scoped to `userId`; reading another user's order returns 404 (no existence leak).
 - Admin endpoints require the admin session; customer CSRF tokens are rejected with 401.
-- Order status transitions are admin-only and audit-logged.
+- Order transitions are forward-only and audit-logged. Cancelling an order restocks reserved units exactly once. Marking an order paid offline never rewinds a shipped/delivered order.
 
 **Input & business logic**
 
-- Zod validation on every request body.
-- Prices, shipping and totals are recomputed from `lib/products.ts`; any client-supplied price is ignored.
-- Quantity is clamped per line and per item; unknown/out-of-stock products are dropped.
-- Order totals sent to WhatsApp come from the server-side catalog, never from the client.
-- Order references and internal ids are random.
+- Zod validation on every request body, including digit-only phone/pincode checks.
+- Prices, shipping and totals are recomputed from the current catalog inside the same snapshot as the stock reservation, so a stale read cannot oversell.
+- Unknown/out-of-stock products and over-quantity requests return 409 with the reason instead of being silently dropped.
+- Client-supplied `requestId` makes order retries idempotent; a network retry returns the original order.
+- Customer text is flattened and stripped of WhatsApp formatting markers before it enters the message, preventing fake sections or injected totals.
+- Order references use an 8-character random suffix; internal ids are random.
 
 **Ordering**
 
@@ -68,37 +77,31 @@ Pages (`/account`, `/booking`, `/order/[id]`, `/admin`) perform the same server-
 - Credentials are verified by Supabase Auth; the app never stores admin passwords.
 - Only users with `role = 'admin'` in `public.users` are authorized (generic "Invalid credentials" otherwise).
 - Two-layer lockout: 8 requests / 15 min per IP and 5 failed attempts / 15 min per IP.
-- 2-hour session lifetime; sessions revoked on sign-out.
 
 **Transport & headers** (`proxy.ts`)
 
-- Content-Security-Policy (self only for scripts/frames, `frame-ancestors 'none'`, `object-src 'none'`)
-- `Strict-Transport-Security` (1 year, preload)
-- `X-Frame-Options: DENY`, `X-Content-Type-Options: nosniff`
-- `Referrer-Policy: strict-origin-when-cross-origin`
-- `Permissions-Policy` denies camera/microphone/geolocation/payment
-- API responses: `Cache-Control: no-store`, `X-Robots-Tag: noindex`
-- `/admin`: `X-Robots-Tag: noindex, nofollow`
+- Content-Security-Policy with a fresh per-request nonce; no `unsafe-inline` scripts or styles.
+- `Strict-Transport-Security` (1 year, preload), `X-Frame-Options: DENY`, `X-Content-Type-Options: nosniff`.
+- `Referrer-Policy: strict-origin-when-cross-origin`, `Permissions-Policy` denies camera/microphone/geolocation/payment.
+- API responses: `Cache-Control: no-store`, `X-Robots-Tag: noindex`; `/admin`: `noindex, nofollow`.
 
-**Secrets**
+**Storage & secrets**
 
-- Server-only env vars; no secret is prefixed `NEXT_PUBLIC_`.
-- `AUTH_SECRET` / `ADMIN_AUTH_SECRET` fail closed in production (session creation throws if unset).
-- `ADMIN_AUTH_SECRET` signs admin sessions; admin passwords live in Supabase Auth, not in env.
+- Server-only modules import `server-only`; client bundles cannot accidentally import env, crypto or store code.
+- Supabase snapshot writes use compare-and-swap versioning: a stale writer is rejected and retried on a fresh snapshot instead of deleting another request's rows.
+- `.env*` files are stripped from the standalone build artifact.
+- Production startup (`instrumentation.ts`) fails closed if `APP_URL`, the real WhatsApp number, strong distinct secrets or Supabase configuration are invalid.
+- No secret is prefixed `NEXT_PUBLIC_`.
 
-## Known limitations / production checklist
+## Production checklist (owner-owned)
 
-- [ ] **Persistent storage** — the default JSON store is per-instance and ephemeral on free hosting. Mount a disk (`DATA_DIR`) or migrate to Postgres/Redis.
-- [ ] **Shared rate limiting** — the limiter is in-memory; use Redis for multiple instances.
-- [ ] **Admin accounts** — managed in Supabase Auth + `public.users.role`; use `npm run create:admin` to provision. Add per-user audit/roles before adding staff.
-- [ ] **No email verification for dev login** — dev login is disabled in production; Google login requires a verified email.
-- [ ] **Session revocation on password change** — not applicable for Google login; add a `sessionsValidAfter` field if password login is added.
-- [ ] **Set `APP_URL`** in production so OAuth redirect URIs and origin checks are exact.
-- [ ] **Set `NEXT_PUBLIC_WHATSAPP_NUMBER`** to the real business number; it is still a placeholder.
-- [ ] **Rotate secrets** periodically and after any suspected exposure.
-- [ ] **Keep dependencies patched** — run `npm audit` / Dependabot.
-- [ ] **WAF/CDN** in front of Render/Railway for volumetric protection.
-- [ ] **Back up** `db.json` if you keep using the file store.
+- [ ] Rotate the current admin password and any live-looking secrets; remove stale `.env` copies from local machines and CI caches.
+- [ ] Set the real `APP_URL`, `NEXT_PUBLIC_WHATSAPP_NUMBER`, distinct 32+ character `AUTH_SECRET` / `ADMIN_AUTH_SECRET`, and Supabase credentials.
+- [ ] Add the exact Google Search Console verification token (or Google-named HTML file) you were issued.
+- [ ] Replace placeholders in `/privacy`, `/terms` and `/refund` with verified legal/business facts.
+- [ ] Remove leftover Supabase test accounts (`alice@example.com`, `bob@example.com`) and provision real password customers.
+- [ ] Keep dependencies patched (`npm audit` / Dependabot) and add a WAF/CDN for volumetric protection.
+- [ ] Back up Supabase (or `db.json` if you stay in file mode).
 
 ## Reporting
 

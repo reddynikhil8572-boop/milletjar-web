@@ -1,8 +1,11 @@
+import "server-only";
+
 import { NextResponse } from "next/server";
 import { requireUser } from "./session";
 import { getAdmin } from "./admin";
 import { assertCsrf } from "./csrf";
 import { clientIp, rateLimit } from "./ratelimit";
+import { isSameOrigin } from "./crypto";
 import type { User, UserSession } from "./types";
 
 export function jsonError(
@@ -23,12 +26,24 @@ export function tooMany(retryAfter: number): NextResponse {
 type RouteOpts = {
   /** Require the x-csrf-token header to match the session token. */
   csrf?: boolean;
+  /** Require an Origin header that matches the configured app origin. */
+  requireOrigin?: boolean;
   /** Requests allowed per window for this key. */
   limit?: number;
   windowMs?: number;
   /** Namespace so limits are per-endpoint. */
   key: string;
 };
+
+async function checkLimit(req: Request, opts: RouteOpts) {
+  const result = await rateLimit(
+    `${opts.key}:${clientIp(req)}`,
+    opts.limit ?? 60,
+    opts.windowMs ?? 60_000
+  );
+  if (!result.allowed) return tooMany(result.retryAfter);
+  return null;
+}
 
 /**
  * Verifies the caller on every request: valid server-side session, live
@@ -41,12 +56,8 @@ export async function guardUser(
   | { ok: true; user: User; session: UserSession; csrf: string }
   | { ok: false; response: NextResponse }
 > {
-  const limit = rateLimit(
-    `${opts.key}:${clientIp(req)}`,
-    opts.limit ?? 60,
-    opts.windowMs ?? 60_000
-  );
-  if (!limit.allowed) return { ok: false, response: tooMany(limit.retryAfter) };
+  const limited = await checkLimit(req, opts);
+  if (limited) return { ok: false, response: limited };
 
   const auth = await requireUser();
   if (!auth) {
@@ -76,12 +87,8 @@ export async function guardAdmin(
   | { ok: true; email: string; csrf: string }
   | { ok: false; response: NextResponse }
 > {
-  const limit = rateLimit(
-    `${opts.key}:${clientIp(req)}`,
-    opts.limit ?? 60,
-    opts.windowMs ?? 60_000
-  );
-  if (!limit.allowed) return { ok: false, response: tooMany(limit.retryAfter) };
+  const limited = await checkLimit(req, opts);
+  if (limited) return { ok: false, response: limited };
 
   const admin = await getAdmin();
   if (!admin) {
@@ -100,18 +107,22 @@ export async function guardAdmin(
 
 /**
  * For unauthenticated endpoints (login, OAuth start, webhooks) where CSRF
- * tokens do not exist yet. Still rate limited per IP.
+ * tokens do not exist yet. Still rate limited per IP; state-changing routes
+ * must also send a same-origin Origin header.
  */
-export function guardPublic(
+export async function guardPublic(
   req: Request,
   opts: RouteOpts
-): { ok: true } | { ok: false; response: NextResponse } {
-  const limit = rateLimit(
-    `${opts.key}:${clientIp(req)}`,
-    opts.limit ?? 30,
-    opts.windowMs ?? 60_000
-  );
-  if (!limit.allowed) return { ok: false, response: tooMany(limit.retryAfter) };
+): Promise<{ ok: true } | { ok: false; response: NextResponse }> {
+  const limited = await checkLimit(req, opts);
+  if (limited) return { ok: false, response: limited };
+
+  if (opts.requireOrigin && !isSameOrigin(req)) {
+    return {
+      ok: false,
+      response: jsonError(403, "Cross-origin request rejected"),
+    };
+  }
   return { ok: true };
 }
 

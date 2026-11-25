@@ -1,3 +1,5 @@
+import "server-only";
+
 import { safeEqual, isSameOrigin } from "./crypto";
 
 export type GuardFailure = {

@@ -1,3 +1,5 @@
+import "server-only";
+
 import { readTable, writeDB } from "./store";
 import { CATALOG_SEEDED_KEY, seedProducts } from "./seed";
 import type { Product } from "./types";

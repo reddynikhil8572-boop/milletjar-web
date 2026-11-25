@@ -22,11 +22,16 @@ const schema = z.object({
  */
 export async function POST(req: Request) {
   const ip = clientIp(req);
-  const guard = guardPublic(req, { key: "admin:login", limit: 8, windowMs: 15 * 60_000 });
+  const guard = await guardPublic(req, {
+    key: "admin:login",
+    limit: 8,
+    windowMs: 15 * 60_000,
+    requireOrigin: true,
+  });
   if (!guard.ok) return guard.response;
 
   // Independent lockout so credential stuffing burns out quickly.
-  const attempt = rateLimit(`admin:attempt:${ip}`, 5, 15 * 60_000);
+  const attempt = await rateLimit(`admin:attempt:${ip}`, 5, 15 * 60_000);
   if (!attempt.allowed) return tooMany(attempt.retryAfter);
 
   if (!supabaseConfigured()) {

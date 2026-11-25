@@ -6,7 +6,7 @@ export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
 
 export async function GET(req: Request) {
-  const guard = guardPublic(req, { key: "admin:me", limit: 120 });
+  const guard = await guardPublic(req, { key: "admin:me", limit: 120 });
   if (!guard.ok) return guard.response;
 
   const admin = await getAdmin();

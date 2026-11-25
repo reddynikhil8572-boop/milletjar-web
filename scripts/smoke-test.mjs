@@ -4,6 +4,10 @@
  * Usage: node scripts/smoke-test.mjs [baseUrl]
  */
 const BASE = process.argv[2] || process.env.SMOKE_BASE || "http://localhost:3012";
+const ADMIN_EMAIL = process.env.SMOKE_ADMIN_EMAIL || "admin@milletjar.in";
+const ADMIN_PASSWORD = process.env.SMOKE_ADMIN_PASSWORD || "";
+const PASSWORD_USER_EMAIL = `password-${Date.now()}@example.com`;
+const PASSWORD_USER_ID = `SmokeTest!${Date.now()}`;
 
 let passed = 0;
 let failed = 0;
@@ -47,6 +51,13 @@ async function req(jar, path, init = {}) {
   const headers = { ...(init.headers || {}) };
   const cookie = jar ? jar.header() : "";
   if (cookie) headers.cookie = cookie;
+  if (
+    (init.method || "GET").toUpperCase() !== "GET" &&
+    !headers.origin &&
+    !headers.Origin
+  ) {
+    headers.origin = new URL(BASE).origin;
+  }
   const res = await fetch(`${BASE}${path}`, {
     ...init,
     headers,
@@ -79,9 +90,84 @@ check("server responds on /api/health", ready, BASE);
 if (!ready) process.exit(1);
 
 // --- public pages ---
-for (const path of ["/", "/products", "/cart", "/login", "/about", "/contact"]) {
+for (const path of [
+  "/",
+  "/products",
+  "/cart",
+  "/login",
+  "/about",
+  "/contact",
+  "/privacy",
+  "/terms",
+  "/refund",
+]) {
   const { res } = await req(null, path);
   check(`GET ${path} renders`, res.status === 200, `status ${res.status}`);
+}
+
+// --- error fallback and search-engine discovery ---
+{
+  const missing = await req(null, "/this-page-does-not-exist");
+  const html = await missing.res.text();
+  check(
+    "unknown route renders the custom 404 page",
+    missing.res.status === 404 && html.includes("Page not found"),
+    `status ${missing.res.status}`
+  );
+
+  const robotsRes = await fetch(`${BASE}/robots.txt`);
+  const robots = await robotsRes.text();
+  check(
+    "robots.txt is served",
+    robotsRes.status === 200 &&
+      robots.toLowerCase().includes("user-agent: *"),
+    `status ${robotsRes.status}`
+  );
+  check(
+    "robots.txt advertises the sitemap",
+    robots.includes("/sitemap.xml"),
+    robots.slice(0, 120)
+  );
+  check(
+    "robots.txt blocks private areas",
+    ["/admin", "/account", "/booking", "/cart", "/login", "/order/"].every(
+      (path) => robots.includes(path)
+    ),
+    robots.slice(0, 200)
+  );
+
+  const sitemapRes = await fetch(`${BASE}/sitemap.xml`);
+  const sitemap = await sitemapRes.text();
+  check(
+    "sitemap.xml is served",
+    sitemapRes.status === 200 && sitemap.includes("<urlset"),
+    `status ${sitemapRes.status}`
+  );
+  check(
+    "sitemap lists public and product pages",
+    sitemap.includes("/products") &&
+      sitemap.includes("/products/foxtail-millet") &&
+      sitemap.includes("/about") &&
+      sitemap.includes("/contact") &&
+      sitemap.includes("/privacy") &&
+      sitemap.includes("/terms") &&
+      sitemap.includes("/refund"),
+    sitemap.slice(0, 200)
+  );
+  check(
+    "sitemap excludes private pages",
+    !["/admin", "/account", "/booking", "/cart", "/login", "/order/"].some(
+      (path) => sitemap.includes(path)
+    ),
+    sitemap.slice(0, 200)
+  );
+
+  const homeHtml = await (await req(null, "/")).res.text();
+  check(
+    "footer links to the legal pages",
+    ["/privacy", "/terms", "/refund"].every((path) => homeHtml.includes(path)),
+    "legal links missing from footer"
+  );
 }
 
 for (const [path, target] of [
@@ -101,10 +187,13 @@ for (const [path, target] of [
 // --- security headers ---
 {
   const { res } = await req(null, "/");
+  const csp = res.headers.get("content-security-policy") || "";
+  check("CSP header present", Boolean(csp), csp || "missing");
+  check("CSP includes a per-request nonce", csp.includes("'nonce-"), csp);
   check(
-    "CSP header present",
-    Boolean(res.headers.get("content-security-policy")),
-    res.headers.get("content-security-policy") || "missing"
+    "CSP does not use unsafe-inline scripts or styles",
+    !csp.includes("'unsafe-inline'"),
+    csp
   );
   check(
     "X-Frame-Options DENY",
@@ -149,6 +238,60 @@ let csrf = "";
     JSON.stringify(body)
   );
   check("CSRF token issued", Boolean(csrf));
+}
+
+// --- email/user-ID password login ---
+{
+  const lookup = new Jar("password-lookup");
+  const created = await req(lookup, "/api/auth/signup", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({
+      email: PASSWORD_USER_EMAIL,
+      password: PASSWORD_USER_ID,
+      name: "Password User",
+    }),
+  });
+  const me = await req(lookup, "/api/auth/me");
+  const userId = me.body?.user?.id || "";
+  check(
+    "password account can be created in development",
+    created.res.status === 201 && Boolean(userId),
+    `status ${created.res.status}`
+  );
+
+  const byEmail = await req(null, "/api/auth/login", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ identifier: PASSWORD_USER_EMAIL, password: PASSWORD_USER_ID }),
+  });
+  check(
+    "password login accepts an email address",
+    byEmail.res.status === 200 && Boolean(byEmail.body?.csrfToken),
+    `status ${byEmail.res.status}`
+  );
+
+  const byId = await req(null, "/api/auth/login", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ identifier: userId, password: PASSWORD_USER_ID }),
+  });
+  check(
+    "password login accepts a user ID",
+    byId.res.status === 200 && Boolean(byId.body?.csrfToken),
+    `status ${byId.res.status}`
+  );
+
+  const wrong = await req(null, "/api/auth/login", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ identifier: userId, password: "not-the-password" }),
+  });
+  check(
+    "password login rejects a wrong password",
+    wrong.res.status === 401,
+    `status ${wrong.res.status}`
+  );
 }
 
 // --- order verification ---
@@ -242,6 +385,34 @@ let reference = "";
 }
 
 {
+  const requestId = `smoke-idem-${Date.now()}`;
+  const first = await req(alice, "/api/orders", {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+      "x-csrf-token": csrf,
+    },
+    body: JSON.stringify(orderBody({ requestId })),
+  });
+  const retry = await req(alice, "/api/orders", {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+      "x-csrf-token": csrf,
+    },
+    body: JSON.stringify(orderBody({ requestId })),
+  });
+  check(
+    "retrying with the same request id returns the original order",
+    first.res.status === 201 &&
+      retry.res.status === 200 &&
+      retry.body?.idempotent === true &&
+      retry.body?.order?.id === first.body?.order?.id,
+    `status ${first.res.status}/${retry.res.status}`
+  );
+}
+
+{
   const { res, body } = await req(alice, "/api/orders");
   check(
     "customer sees their own orders",
@@ -277,7 +448,7 @@ let reference = "";
   });
   check(
     "unknown products are rejected",
-    forged.res.status === 400,
+    forged.res.status === 409,
     `status ${forged.res.status}`
   );
 }
@@ -314,6 +485,11 @@ let reference = "";
 }
 
 // --- admin auth (isolated) ---
+check(
+  "SMOKE_ADMIN_PASSWORD is configured",
+  Boolean(ADMIN_PASSWORD),
+  "set SMOKE_ADMIN_PASSWORD to the current admin password"
+);
 const admin = new Jar("admin");
 let adminCsrf = "";
 {
@@ -321,7 +497,7 @@ let adminCsrf = "";
     method: "POST",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify({
-      email: "admin@milletjar.in",
+      email: ADMIN_EMAIL,
       password: "wrong-password",
     }),
   });
@@ -335,8 +511,8 @@ let adminCsrf = "";
     method: "POST",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify({
-      email: "admin@milletjar.in",
-      password: "admin12345",
+      email: ADMIN_EMAIL,
+      password: ADMIN_PASSWORD,
     }),
   });
   adminCsrf = body?.csrfToken || "";
@@ -375,6 +551,94 @@ let adminCsrf = "";
   );
 }
 
+// --- server-side stock reservation and shortfall handling ---
+let stockOrderId = "";
+{
+  const patchProduct = (stock) =>
+    req(admin, "/api/admin/products/mj-foxtail", {
+      method: "PATCH",
+      headers: {
+        "Content-Type": "application/json",
+        "x-csrf-token": adminCsrf,
+      },
+      body: JSON.stringify({ stock }),
+    });
+  const readProduct = async () => {
+    const { body } = await req(admin, "/api/admin/products");
+    return body?.products?.find((p) => p.id === "mj-foxtail");
+  };
+
+  const setStock = await patchProduct(1);
+  check(
+    "admin can set a tracked stock quantity",
+    setStock.res.status === 200 && setStock.body?.product?.stock === 1,
+    `status ${setStock.res.status}`
+  );
+
+  const short = await req(alice, "/api/orders", {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+      "x-csrf-token": csrf,
+    },
+    body: JSON.stringify(
+      orderBody({
+        items: [{ productId: "mj-foxtail", qty: 2 }],
+        requestId: `smoke-short-${Date.now()}`,
+      })
+    ),
+  });
+  check(
+    "stock shortfall is rejected with 409",
+    short.res.status === 409,
+    `status ${short.res.status}`
+  );
+
+  const reserved = await req(alice, "/api/orders", {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+      "x-csrf-token": csrf,
+    },
+    body: JSON.stringify(
+      orderBody({
+        items: [{ productId: "mj-foxtail", qty: 1 }],
+        requestId: `smoke-reserve-${Date.now()}`,
+      })
+    ),
+  });
+  stockOrderId = reserved.body?.order?.id || "";
+  const afterReserve = await readProduct();
+  check(
+    "a successful order decrements tracked stock atomically",
+    reserved.res.status === 201 && afterReserve?.stock === 0,
+    `status ${reserved.res.status} stock ${afterReserve?.stock}`
+  );
+
+  const cancelledStockOrder = await req(
+    admin,
+    `/api/admin/orders/${stockOrderId}`,
+    {
+      method: "PATCH",
+      headers: {
+        "Content-Type": "application/json",
+        "x-csrf-token": adminCsrf,
+      },
+      body: JSON.stringify({ status: "cancelled" }),
+    }
+  );
+  const afterCancel = await readProduct();
+  check(
+    "cancelling an order restocks reserved units",
+    cancelledStockOrder.res.status === 200 &&
+      cancelledStockOrder.body?.order?.status === "cancelled" &&
+      afterCancel?.stock === 1,
+    `status ${cancelledStockOrder.res.status} stock ${afterCancel?.stock}`
+  );
+
+  await patchProduct(null);
+}
+
 {
   const { res, body } = await req(admin, "/api/admin/orders");
   check(
@@ -394,24 +658,6 @@ let adminCsrf = "";
     `status ${noCsrf.res.status}`
   );
 
-  const { res: patched, body: patchBody } = await req(
-    admin,
-    `/api/admin/orders/${orderId}`,
-    {
-      method: "PATCH",
-      headers: {
-        "Content-Type": "application/json",
-        "x-csrf-token": adminCsrf,
-      },
-      body: JSON.stringify({ status: "shipped" }),
-    }
-  );
-  check(
-    "admin can update order status",
-    patched.status === 200 && patchBody?.order?.status === "shipped",
-    `status ${patched.status}`
-  );
-
   const patchStatus = (status) =>
     req(admin, `/api/admin/orders/${orderId}`, {
       method: "PATCH",
@@ -422,17 +668,18 @@ let adminCsrf = "";
       body: JSON.stringify({ status }),
     });
 
-  const allStates = [
-    "pending",
-    "confirmed",
-    "paid",
-    "packed",
-    "shipped",
-    "delivered",
-    "cancelled",
-  ];
+  const firstUpdate = await patchStatus("confirmed");
+  check(
+    "admin can update order status",
+    firstUpdate.res.status === 200 &&
+      firstUpdate.body?.order?.status === "confirmed",
+    `status ${firstUpdate.res.status}`
+  );
+
+  // The order starts at "pending"; only forward transitions are allowed.
+  const forwardStates = ["paid", "packed", "shipped", "delivered"];
   const cycle = [];
-  for (const status of allStates) {
+  for (const status of forwardStates) {
     const patch = await patchStatus(status);
     const read = await req(admin, `/api/admin/orders/${orderId}`);
     cycle.push(
@@ -442,9 +689,9 @@ let adminCsrf = "";
     );
   }
   check(
-    "admin can cycle every order state and each change persists",
+    "admin can advance every order state and each change persists",
     cycle.every(Boolean),
-    allStates.map((s, i) => `${s}:${cycle[i]}`).join(" ")
+    forwardStates.map((s, i) => `${s}:${cycle[i]}`).join(" ")
   );
 
   const invalid = await patchStatus("not-a-status");
@@ -454,7 +701,13 @@ let adminCsrf = "";
     `status ${invalid.res.status}`
   );
 
-  await patchStatus("delivered");
+  const backward = await patchStatus("pending");
+  check(
+    "admin rejects a backward order state (409)",
+    backward.res.status === 409,
+    `status ${backward.res.status}`
+  );
+
   const filtered = await req(admin, "/api/admin/orders?status=delivered");
   check(
     "admin status filter reflects the current order state",
@@ -478,10 +731,10 @@ let adminCsrf = "";
     body: JSON.stringify({ paid: true }),
   });
   check(
-    "mark paid updates payment and order state",
+    "mark paid updates payment without rewinding the order",
     paidPatch.body?.order?.payment?.status === "paid" &&
-      paidPatch.body?.order?.status === "paid",
-    JSON.stringify(paidPatch.body?.order?.payment)
+      paidPatch.body?.order?.status === "delivered",
+    JSON.stringify(paidPatch.body?.order)
   );
 
   const customerCsrfAttempt = await req(alice, `/api/admin/orders/${orderId}`, {
@@ -496,6 +749,31 @@ let adminCsrf = "";
     "customer CSRF token cannot mutate admin resources",
     customerCsrfAttempt.res.status === 401,
     `status ${customerCsrfAttempt.res.status}`
+  );
+
+  const deliveredTerminal = await patchStatus("cancelled");
+  check(
+    "delivered orders are terminal (409)",
+    deliveredTerminal.res.status === 409,
+    `status ${deliveredTerminal.res.status}`
+  );
+
+  const cancelledTerminal = await req(
+    admin,
+    `/api/admin/orders/${stockOrderId}`,
+    {
+      method: "PATCH",
+      headers: {
+        "Content-Type": "application/json",
+        "x-csrf-token": adminCsrf,
+      },
+      body: JSON.stringify({ status: "confirmed" }),
+    }
+  );
+  check(
+    "cancelled orders are terminal (409)",
+    cancelledTerminal.res.status === 409,
+    `status ${cancelledTerminal.res.status}`
   );
 }
 

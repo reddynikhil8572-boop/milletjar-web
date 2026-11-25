@@ -9,7 +9,7 @@ export const dynamic = "force-dynamic";
 export const metadata = {
   title: "Shop | Millet Jar",
   description:
-    "Browse the Millet Jar range. Add to cart, pay online or order on WhatsApp.",
+    "Browse the Millet Jar range. Add to cart and order on WhatsApp.",
 };
 
 export default async function ProductsPage() {

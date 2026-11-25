@@ -7,6 +7,7 @@ import { readDB, writeDB } from "@/lib/store";
 import { createUserSession, upsertGoogleUser } from "@/lib/session";
 import { requestOrigin } from "@/lib/url";
 import { safeEqual } from "@/lib/crypto";
+import { safeNextPath } from "@/lib/safe-next";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -18,7 +19,10 @@ function backTo(req: Request, path: string) {
 }
 
 export async function GET(req: Request) {
-  const guard = guardPublic(req, { key: "auth:google:callback", limit: 30 });
+  const guard = await guardPublic(req, {
+    key: "auth:google:callback",
+    limit: 30,
+  });
   if (!guard.ok) return guard.response;
 
   if (!googleConfigured()) {
@@ -68,14 +72,13 @@ export async function GET(req: Request) {
       email: profile.email,
       name: profile.name,
       picture: profile.picture,
+      googleSub: profile.sub,
     });
+    if (!user) return backTo(req, "/login?error=oauth_link_mismatch");
     await createUserSession(user.id);
 
-    const next = url.searchParams.get("next") || pending.next || "";
-    const safeNext = next.startsWith("/") && !next.startsWith("//")
-      ? next
-      : "/account";
-    return backTo(req, safeNext);
+    const next = safeNextPath(url.searchParams.get("next") || pending.next);
+    return backTo(req, next);
   } catch (err) {
     console.error("[milletjar] google callback failed", err);
     return serverError("google callback");

@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import { z } from "zod";
+import { env } from "@/lib/env";
 import { guardPublic, jsonError, serverError } from "@/lib/guard";
 import { createPasswordUser, createUserSession } from "@/lib/session";
 
@@ -12,9 +13,24 @@ const schema = z.object({
   name: z.string().min(1).max(80).optional(),
 });
 
-/** Create an email+password account and sign the user in. */
+/** Create an email+password account and sign the user in (development only). */
 export async function POST(req: Request) {
-  const guard = guardPublic(req, { key: "auth:signup", limit: 10, windowMs: 60_000 });
+  // Email verification is not wired up yet. Leave sign-in open to Google and
+  // admin-provisioned password accounts in production; re-enable after adding
+  // a verified-email flow.
+  if (env.isProd) {
+    return jsonError(
+      403,
+      "Account creation is disabled. Use Google sign-in or contact support."
+    );
+  }
+
+  const guard = await guardPublic(req, {
+    key: "auth:signup",
+    limit: 10,
+    windowMs: 60_000,
+    requireOrigin: true,
+  });
   if (!guard.ok) return guard.response;
 
   let body: unknown;

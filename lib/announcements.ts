@@ -1,3 +1,5 @@
+import "server-only";
+
 import { readTable, writeDB } from "./store";
 import { ANNOUNCEMENTS_KEY, defaultAnnouncements } from "./seed";
 import type { AnnouncementConfig } from "./types";

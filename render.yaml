@@ -16,6 +16,12 @@ services:
         sync: false
       - key: NEXT_PUBLIC_CONTACT_EMAIL
         sync: false
+      # Google Search Console HTML-tag verification token (public, not a secret)
+      - key: NEXT_PUBLIC_GOOGLE_SITE_VERIFICATION
+        sync: false
+      # Render terminates TLS and appends the real peer to X-Forwarded-For.
+      - key: TRUST_PROXY
+        value: "true"
       # Customer auth
       - key: GOOGLE_CLIENT_ID
         sync: false

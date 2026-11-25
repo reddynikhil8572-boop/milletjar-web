@@ -1,3 +1,5 @@
+import "server-only";
+
 import crypto from "node:crypto";
 import { promisify } from "node:util";
 
@@ -60,24 +62,27 @@ export function siteOrigin(req: Request): string {
   }
 }
 
-/** Reject cross-site mutations in addition to the CSRF token check. */
+/** Require a same-origin Origin header on every state-changing request. */
 export function isSameOrigin(req: Request): boolean {
   const origin = req.headers.get("origin");
-  if (origin) {
-    const allowed = new Set<string>();
+  if (!origin) return false;
+  const allowed = new Set<string>();
+  try {
+    const url = new URL(req.url);
+    allowed.add(url.origin);
+    // Standalone servers can bind to 0.0.0.0 while the browser uses the
+    // public Host. The Host header is the authoritative same-origin target.
+    const host = req.headers.get("host");
+    if (host) allowed.add(`${url.protocol}//${host}`);
+  } catch {
+    /* ignore */
+  }
+  if (process.env.APP_URL) {
     try {
-      allowed.add(new URL(req.url).origin);
+      allowed.add(new URL(process.env.APP_URL).origin);
     } catch {
       /* ignore */
     }
-    if (process.env.APP_URL) {
-      try {
-        allowed.add(new URL(process.env.APP_URL).origin);
-      } catch {
-        /* ignore */
-      }
-    }
-    if (!allowed.has(origin)) return false;
   }
-  return true;
+  return allowed.has(origin);
 }

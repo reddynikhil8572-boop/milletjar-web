@@ -11,6 +11,7 @@ export const dynamic = "force-dynamic";
 export const metadata = {
   title: "My account | Millet Jar",
   description: "View your Millet Jar profile and order history.",
+  robots: { index: false, follow: false },
 };
 
 const STATUS_STYLES: Record<string, string> = {
@@ -46,6 +47,9 @@ export default async function AccountPage() {
               {auth.user.name}
             </h1>
             <p className="text-sm text-mj-brown">{auth.user.email}</p>
+            <p className="mt-0.5 text-xs text-mj-brown">
+              Account ID: <code className="select-all">{auth.user.id}</code>
+            </p>
           </div>
         </div>
         <div className="flex items-center gap-2">

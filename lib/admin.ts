@@ -1,3 +1,5 @@
+import "server-only";
+
 import { cookies } from "next/headers";
 import { randomToken, sha256 } from "./crypto";
 import { prune, readDB, writeDB } from "./store";
@@ -65,6 +67,12 @@ export async function getAdmin(): Promise<AdminContext | null> {
   return readDB((db) => {
     const session = db.adminSessions.find((s) => s.id === id);
     if (!session || session.expiresAt <= Date.now()) return null;
+    // Role is checked on every request, so revoking admin access takes effect
+    // immediately instead of lasting until the session expires.
+    const user = db.users.find(
+      (u) => u.email.toLowerCase() === session.email.trim().toLowerCase()
+    );
+    if (!user || user.role !== "admin") return null;
     return {
       email: session.email,
       csrf: session.csrf,

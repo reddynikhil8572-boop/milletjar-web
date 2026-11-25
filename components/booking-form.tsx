@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useRef, useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useCart } from "@/components/cart-provider";
@@ -19,6 +19,13 @@ const SLOTS = [
   "Afternoon (12pm – 4pm)",
   "Evening (4pm – 8pm)",
 ];
+
+function newRequestId(): string {
+  if (typeof crypto !== "undefined" && "randomUUID" in crypto) {
+    return crypto.randomUUID();
+  }
+  return `req_${Date.now()}_${Math.random().toString(36).slice(2)}`;
+}
 
 export default function BookingForm({
   defaultName,
@@ -42,6 +49,7 @@ export default function BookingForm({
   const [selectedAddressId, setSelectedAddressId] = useState<string | null>(
     null
   );
+  const requestIdRef = useRef<string | null>(null);
 
   function applySavedAddress(a: SavedAddress) {
     setName(a.name);
@@ -64,6 +72,11 @@ export default function BookingForm({
     event.preventDefault();
     if (!valid || busy) return;
 
+    // Keep the same id across a retry so a lost response cannot create a
+    // duplicate order or reserve stock twice.
+    const requestId = requestIdRef.current || newRequestId();
+    requestIdRef.current = requestId;
+
     // Open the tab during the click so popup blockers cannot swallow it,
     // then point it at the server-built WhatsApp message once the order is
     // created. If it is blocked, the order page still has a direct link.
@@ -71,33 +84,45 @@ export default function BookingForm({
     setBusy(true);
     setError("");
 
-    const result = await mutate<OrderResponse>("/api/orders", {
-      items: cart.lines,
-      customer: {
-        name: name.trim(),
-        phone: phone.trim(),
-        address: address.trim(),
-        pincode: pincode.trim(),
-        city: city.trim() || undefined,
-        slot,
-      },
-    });
+    try {
+      const result = await mutate<OrderResponse>("/api/orders", {
+        requestId,
+        items: cart.lines,
+        customer: {
+          name: name.trim(),
+          phone: phone.trim(),
+          address: address.trim(),
+          pincode: pincode.trim(),
+          city: city.trim() || undefined,
+          slot,
+        },
+      });
 
-    if (!result.ok) {
+      if (!result.ok) {
+        tab?.close();
+        setError(result.error);
+        return;
+      }
+
+      const { whatsappUrl, next } = result.data;
+      cart.clear();
+      requestIdRef.current = null;
+
+      if (tab && !tab.closed) {
+        tab.opener = null;
+        tab.location.href = whatsappUrl;
+      }
+      router.push(`${next}?new=1`);
+    } catch {
+      // mutate() normally converts failures to a result; this covers a truly
+      // unexpected client-side error so the button is never stuck on "busy".
       tab?.close();
-      setError(result.error);
+      setError(
+        "Network error. Please try again — retrying will not create a duplicate order."
+      );
+    } finally {
       setBusy(false);
-      return;
     }
-
-    const { whatsappUrl, next } = result.data;
-    cart.clear();
-
-    if (tab && !tab.closed) {
-      tab.opener = null;
-      tab.location.href = whatsappUrl;
-    }
-    router.push(`${next}?new=1`);
   }
 
   if (cart.ready && cart.items.length === 0) {

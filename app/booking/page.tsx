@@ -9,6 +9,7 @@ export const dynamic = "force-dynamic";
 export const metadata = {
   title: "Delivery details | Millet Jar",
   description: "Add your delivery details to place a Millet Jar order.",
+  robots: { index: false, follow: false },
 };
 
 export default async function BookingPage() {

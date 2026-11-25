@@ -10,9 +10,11 @@
 -- * RLS is enabled with no policies: the anon/authenticated keys can read
 --   nothing. The app talks to these tables only with the service_role key,
 --   which bypasses RLS.
--- * mj_apply_snapshot() is the store's atomic write path: it upserts every
---   row of the snapshot and deletes rows missing from it, in one
---   transaction. Only service_role may execute it.
+-- * mj_apply_snapshot() is the store's atomic write path: it checks a version
+--   counter, then upserts every row of the snapshot and deletes rows missing
+--   from it in one transaction. A stale version is rejected so concurrent
+--   writers cannot delete each other's rows. Only service_role may execute it.
+-- * db_meta holds that version; rate_limits backs the shared request limiter.
 
 create table if not exists users (
   "id" text primary key,
@@ -21,6 +23,7 @@ create table if not exists users (
   "picture" text,
   "provider" text not null,
   "passwordHash" text,
+  "googleSub" text,
   "role" text not null default 'customer',
   "createdAt" bigint not null,
   "lastLoginAt" bigint not null
@@ -54,6 +57,7 @@ create table if not exists oauth_states (
 create table if not exists orders (
   "id" text primary key,
   "reference" text not null,
+  "requestId" text,
   "userId" text not null,
   "items" jsonb not null,
   "subtotal" integer not null,
@@ -113,14 +117,37 @@ create table if not exists settings (
   "value" jsonb
 );
 
+-- Compare-and-swap version for the whole snapshot. The app increments it on
+-- every accepted write and refuses a write whose expected version is stale.
+create table if not exists db_meta (
+  "id" text primary key,
+  "version" bigint not null default 0,
+  "updatedAt" bigint not null
+);
+
+-- Shared fixed-window counters for route-level rate limits.
+create table if not exists rate_limits (
+  "key" text primary key,
+  "count" integer not null,
+  "resetAt" bigint not null
+);
+
 -- Databases created before stock tracking was added pick up the column here;
 -- null means "quantity not tracked".
 alter table products add column if not exists "stock" integer;
 alter table products add column if not exists "images" jsonb not null default '[]'::jsonb;
+alter table users add column if not exists "googleSub" text;
+alter table orders add column if not exists "requestId" text;
 
 create index if not exists user_sessions_user_idx on user_sessions ("userId");
 create index if not exists orders_user_idx on orders ("userId");
 create index if not exists saved_addresses_user_idx on saved_addresses ("userId");
+create unique index if not exists users_google_sub_key on users ("googleSub") where "googleSub" is not null;
+create unique index if not exists orders_user_request_key on orders ("userId", "requestId") where "requestId" is not null;
+
+insert into db_meta ("id", "version", "updatedAt")
+values ('single', 0, (extract(epoch from now()) * 1000)::bigint)
+on conflict ("id") do nothing;
 
 alter table users enable row level security;
 alter table user_sessions enable row level security;
@@ -131,28 +158,53 @@ alter table audit enable row level security;
 alter table saved_addresses enable row level security;
 alter table products enable row level security;
 alter table settings enable row level security;
+alter table db_meta enable row level security;
+alter table rate_limits enable row level security;
 
 -- Atomic snapshot write used by lib/supabase-store.ts.
-create or replace function mj_apply_snapshot(data jsonb)
-returns void
+-- Replaced (not altered) because the return type changed from void to bigint.
+drop function if exists mj_apply_snapshot(jsonb);
+create or replace function mj_apply_snapshot(data jsonb, expected_version bigint default null)
+returns bigint
 language plpgsql
 security definer
+set search_path = public, pg_temp
 as $$
+declare
+  current_version bigint;
+  next_version bigint;
 begin
+  insert into db_meta ("id", "version", "updatedAt")
+  values ('single', 0, (extract(epoch from now()) * 1000)::bigint)
+  on conflict ("id") do nothing;
+
+  select "version" into current_version from db_meta where "id" = 'single' for update;
+
+  if expected_version is not null and current_version <> expected_version then
+    raise exception 'version conflict' using errcode = '40001';
+  end if;
+
+  next_version := current_version + 1;
+  update db_meta
+    set "version" = next_version,
+        "updatedAt" = (extract(epoch from now()) * 1000)::bigint
+    where "id" = 'single';
   -- users
   delete from users
     where "id" not in (
       select value->>'id' from jsonb_array_elements(coalesce(data->'users', '[]'::jsonb)) where value ? 'id'
     );
-  insert into users ("id","email","name","picture","provider","passwordHash","role","createdAt","lastLoginAt")
+  insert into users ("id","email","name","picture","provider","passwordHash","googleSub","role","createdAt","lastLoginAt")
     select value->>'id', value->>'email', value->>'name', value->>'picture',
-           value->>'provider', value->>'passwordHash', coalesce(value->>'role', 'customer'),
+           value->>'provider', value->>'passwordHash', value->>'googleSub',
+           coalesce(value->>'role', 'customer'),
            (value->>'createdAt')::bigint, (value->>'lastLoginAt')::bigint
     from jsonb_array_elements(coalesce(data->'users', '[]'::jsonb))
     on conflict ("id") do update set
       "email"=excluded."email", "name"=excluded."name", "picture"=excluded."picture",
       "provider"=excluded."provider", "passwordHash"=excluded."passwordHash",
-      "role"=excluded."role", "createdAt"=excluded."createdAt", "lastLoginAt"=excluded."lastLoginAt";
+      "googleSub"=excluded."googleSub", "role"=excluded."role",
+      "createdAt"=excluded."createdAt", "lastLoginAt"=excluded."lastLoginAt";
 
   -- user_sessions
   delete from user_sessions
@@ -196,14 +248,15 @@ begin
     where "id" not in (
       select value->>'id' from jsonb_array_elements(coalesce(data->'orders', '[]'::jsonb)) where value ? 'id'
     );
-  insert into orders ("id","reference","userId","items","subtotal","shipping","total","customer","status","payment","createdAt","updatedAt")
-    select value->>'id', value->>'reference', value->>'userId', value->'items',
+  insert into orders ("id","reference","requestId","userId","items","subtotal","shipping","total","customer","status","payment","createdAt","updatedAt")
+    select value->>'id', value->>'reference', value->>'requestId', value->>'userId', value->'items',
            (value->>'subtotal')::integer, (value->>'shipping')::integer, (value->>'total')::integer,
            value->'customer', value->>'status', value->'payment',
            (value->>'createdAt')::bigint, (value->>'updatedAt')::bigint
     from jsonb_array_elements(coalesce(data->'orders', '[]'::jsonb))
     on conflict ("id") do update set
-      "reference"=excluded."reference", "userId"=excluded."userId", "items"=excluded."items",
+      "reference"=excluded."reference", "requestId"=excluded."requestId",
+      "userId"=excluded."userId", "items"=excluded."items",
       "subtotal"=excluded."subtotal", "shipping"=excluded."shipping", "total"=excluded."total",
       "customer"=excluded."customer", "status"=excluded."status", "payment"=excluded."payment",
       "createdAt"=excluded."createdAt", "updatedAt"=excluded."updatedAt";
@@ -267,6 +320,8 @@ begin
       "userId"=excluded."userId", "name"=excluded."name", "phone"=excluded."phone",
       "address"=excluded."address", "city"=excluded."city", "pincode"=excluded."pincode",
       "slot"=excluded."slot", "createdAt"=excluded."createdAt";
+
+  return next_version;
 end;
 $$;
 
@@ -282,7 +337,48 @@ values (
 )
 on conflict (id) do nothing;
 
-revoke execute on function mj_apply_snapshot(jsonb) from public;
-revoke execute on function mj_apply_snapshot(jsonb) from anon;
-revoke execute on function mj_apply_snapshot(jsonb) from authenticated;
-grant execute on function mj_apply_snapshot(jsonb) to service_role;
+-- Atomic shared rate limiter. One row per key; returns allowed + retryAfter.
+create or replace function mj_rate_limit(p_key text, p_limit integer, p_window_ms bigint)
+returns jsonb
+language plpgsql
+security definer
+set search_path = public, pg_temp
+as $$
+declare
+  v_now bigint := (extract(epoch from now()) * 1000)::bigint;
+  v_count integer;
+  v_reset bigint;
+begin
+  insert into rate_limits ("key", "count", "resetAt")
+  values (left(p_key, 200), 1, v_now + p_window_ms)
+  on conflict ("key") do update set
+    "count" = case when rate_limits."resetAt" <= v_now then 1 else rate_limits."count" + 1 end,
+    "resetAt" = case when rate_limits."resetAt" <= v_now then v_now + p_window_ms else rate_limits."resetAt" end
+  returning "count", "resetAt" into v_count, v_reset;
+
+  if random() < 0.01 then
+    delete from rate_limits where "resetAt" < v_now - 86_400_000;
+  end if;
+
+  if v_count > p_limit then
+    return jsonb_build_object(
+      'allowed', false,
+      'retryAfter', greatest(1, ceil((v_reset - v_now) / 1000.0)::integer)
+    );
+  end if;
+  return jsonb_build_object('allowed', true, 'retryAfter', 0);
+end;
+$$;
+
+revoke all on db_meta, rate_limits from anon, authenticated;
+grant all on db_meta, rate_limits to service_role;
+
+revoke all on function mj_apply_snapshot(jsonb, bigint) from public;
+revoke all on function mj_apply_snapshot(jsonb, bigint) from anon;
+revoke all on function mj_apply_snapshot(jsonb, bigint) from authenticated;
+grant execute on function mj_apply_snapshot(jsonb, bigint) to service_role;
+
+revoke all on function mj_rate_limit(text, integer, bigint) from public;
+revoke all on function mj_rate_limit(text, integer, bigint) from anon;
+revoke all on function mj_rate_limit(text, integer, bigint) from authenticated;
+grant execute on function mj_rate_limit(text, integer, bigint) to service_role;

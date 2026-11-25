@@ -19,7 +19,11 @@ const schema = z.object({
 export async function POST(req: Request) {
   if (env.isProd) return jsonError(404, "Not found");
 
-  const guard = guardPublic(req, { key: "auth:dev-login", limit: 20 });
+  const guard = await guardPublic(req, {
+    key: "auth:dev-login",
+    limit: 20,
+    requireOrigin: true,
+  });
   if (!guard.ok) return guard.response;
 
   let body: unknown;
@@ -36,6 +40,7 @@ export async function POST(req: Request) {
     email: parsed.data.email.toLowerCase(),
     name: parsed.data.name || parsed.data.email.split("@")[0],
   });
+  if (!user) return jsonError(409, "This email is linked to another sign-in method");
   const csrf = await createUserSession(user.id);
 
   return NextResponse.json({ ok: true, csrfToken: csrf }, { status: 200 });

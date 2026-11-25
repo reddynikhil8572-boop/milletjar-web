@@ -36,6 +36,7 @@ export async function generateMetadata({
     description:
       product.description ||
       `${product.name} from Millet Jar. Farm sourced, cleaned and packed in small batches.`,
+    alternates: { canonical: `/products/${slug}` },
   };
 }
 
@@ -200,8 +201,8 @@ export default async function ProductPage({
               wide
             />
             <p className="mt-3 text-xs text-mj-brown">
-              Pay online securely, or confirm your order on WhatsApp at the
-              next step.
+              Add your delivery details next; your complete order is sent to
+              us on WhatsApp for confirmation.
             </p>
           </div>
 

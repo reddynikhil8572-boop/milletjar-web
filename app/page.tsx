@@ -18,8 +18,8 @@ const steps = [
     body: "Tell us where to deliver and pick a convenient time slot.",
   },
   {
-    title: "Pay or confirm on WhatsApp",
-    body: "Pay online securely, or send your order summary to us on WhatsApp.",
+    title: "Confirm on WhatsApp",
+    body: "We send your complete order summary to WhatsApp so we can confirm availability and delivery with you.",
   },
 ];
 

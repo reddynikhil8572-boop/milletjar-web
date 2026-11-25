@@ -92,6 +92,21 @@ export default function Footer() {
                   Contact us
                 </Link>
               </li>
+              <li>
+                <Link href="/privacy" className="inline-block py-1 transition-colors hover:text-mj-green">
+                  Privacy policy
+                </Link>
+              </li>
+              <li>
+                <Link href="/terms" className="inline-block py-1 transition-colors hover:text-mj-green">
+                  Terms of service
+                </Link>
+              </li>
+              <li>
+                <Link href="/refund" className="inline-block py-1 transition-colors hover:text-mj-green">
+                  Refunds & cancellations
+                </Link>
+              </li>
             </ul>
           </div>
         </div>

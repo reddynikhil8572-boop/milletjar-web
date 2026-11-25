@@ -13,14 +13,18 @@ export type SessionInfo = {
 };
 
 export async function getSession(): Promise<SessionInfo> {
-  const res = await fetch("/api/auth/me", {
-    credentials: "same-origin",
-    cache: "no-store",
-  });
-  if (!res.ok) {
+  try {
+    const res = await fetch("/api/auth/me", {
+      credentials: "same-origin",
+      cache: "no-store",
+    });
+    if (!res.ok) {
+      return { user: null, csrfToken: null, googleEnabled: false };
+    }
+    return (await res.json()) as SessionInfo;
+  } catch {
     return { user: null, csrfToken: null, googleEnabled: false };
   }
-  return (await res.json()) as SessionInfo;
 }
 
 export type MutationResult<T> =
@@ -29,7 +33,7 @@ export type MutationResult<T> =
 
 /**
  * Every mutation goes through here so the CSRF header always matches the
- * server-side session token. Never call a mutating endpoint directly.
+ * server-side session token. Network failures are returned, never thrown.
  */
 export async function mutate<T = unknown>(
   path: string,
@@ -41,16 +45,25 @@ export async function mutate<T = unknown>(
     return { ok: false, error: "Please sign in to continue", status: 401 };
   }
 
-  const res = await fetch(path, {
-    method,
-    credentials: "same-origin",
-    cache: "no-store",
-    headers: {
-      "Content-Type": "application/json",
-      "x-csrf-token": session.csrfToken,
-    },
-    body: body === undefined ? undefined : JSON.stringify(body),
-  });
+  let res: Response;
+  try {
+    res = await fetch(path, {
+      method,
+      credentials: "same-origin",
+      cache: "no-store",
+      headers: {
+        "Content-Type": "application/json",
+        "x-csrf-token": session.csrfToken,
+      },
+      body: body === undefined ? undefined : JSON.stringify(body),
+    });
+  } catch {
+    return {
+      ok: false,
+      error: "Network error. Check your connection and try again.",
+      status: 0,
+    };
+  }
 
   let data: unknown = null;
   try {

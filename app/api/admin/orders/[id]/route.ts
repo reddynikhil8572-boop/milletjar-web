@@ -1,25 +1,29 @@
 import { NextResponse } from "next/server";
 import { z } from "zod";
-import { guardAdmin, jsonError } from "@/lib/guard";
+import { randomToken } from "@/lib/crypto";
+import { guardAdmin, jsonError, serverError } from "@/lib/guard";
+import { ORDER_STATUSES, canTransition } from "@/lib/order-state";
 import { readDB, writeDB } from "@/lib/store";
+import type { OrderStatus } from "@/lib/types";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
 
-const schema = z.object({
-  status: z
-    .enum([
-      "pending",
-      "confirmed",
-      "paid",
-      "packed",
-      "shipped",
-      "delivered",
-      "cancelled",
-    ])
-    .optional(),
-  paid: z.boolean().optional(),
-});
+const schema = z
+  .object({
+    status: z.enum(ORDER_STATUSES).optional(),
+    paid: z.boolean().optional(),
+  })
+  .refine((data) => data.status !== undefined || data.paid !== undefined, {
+    message: "No update supplied",
+  });
+
+class UpdateError extends Error {
+  constructor(public status: number, message: string) {
+    super(message);
+    this.name = "OrderUpdateError";
+  }
+}
 
 export async function PATCH(
   req: Request,
@@ -43,27 +47,71 @@ export async function PATCH(
   const parsed = schema.safeParse(body);
   if (!parsed.success) return jsonError(400, "Invalid update");
 
-  const updated = await writeDB((db) => {
-    const order = db.orders.find((o) => o.id === id);
-    if (!order) return null;
-    if (parsed.data.status) order.status = parsed.data.status;
-    if (typeof parsed.data.paid === "boolean") {
-      order.payment.status = parsed.data.paid ? "paid" : "unpaid";
-      if (parsed.data.paid) order.status = "paid";
-    }
-    order.updatedAt = Date.now();
-    db.audit.push({
-      id: `aud_${Math.random().toString(36).slice(2, 10)}`,
-      actor: "admin",
-      actorId: guard.email,
-      action: "order.update",
-      target: order.id,
-      createdAt: Date.now(),
-    });
-    return order;
-  });
+  let updated;
+  try {
+    updated = await writeDB((db) => {
+      const order = db.orders.find((o) => o.id === id);
+      if (!order) throw new UpdateError(404, "Order not found");
 
-  if (!updated) return jsonError(404, "Order not found");
+      const current = order.status as OrderStatus;
+      const target = parsed.data.status;
+      const now = Date.now();
+
+      if (current === "cancelled") {
+        throw new UpdateError(409, "Cancelled orders cannot be changed");
+      }
+      if (target && !canTransition(current, target)) {
+        throw new UpdateError(409, `Cannot change ${current} to ${target}`);
+      }
+      // Cancelling releases reserved stock exactly once (cancel is terminal).
+      if (target === "cancelled") {
+        for (const item of order.items) {
+          const product = db.products.find((p) => p.id === item.productId);
+          if (
+            product &&
+            product.stock !== null &&
+            product.stock !== undefined
+          ) {
+            product.stock += item.qty;
+            product.inStock = true;
+            product.updatedAt = now;
+          }
+        }
+      }
+
+      if (target) {
+        order.status = target;
+        if (target === "paid") order.payment.status = "paid";
+      }
+      if (parsed.data.paid === true) {
+        if (order.payment.status !== "paid") {
+          order.payment.status = "paid";
+          // Marking payment never rewinds an order that is already packed,
+          // shipped or delivered.
+          if (current === "pending" || current === "confirmed") {
+            order.status = "paid";
+          }
+        }
+      } else if (parsed.data.paid === false) {
+        order.payment.status = "unpaid";
+      }
+
+      order.updatedAt = now;
+      db.audit.push({
+        id: `aud_${randomToken(8)}`,
+        actor: "admin",
+        actorId: guard.email,
+        action: target === "cancelled" ? "order.cancel" : "order.update",
+        target: order.id,
+        createdAt: now,
+      });
+      return order;
+    });
+  } catch (err) {
+    if (err instanceof UpdateError) return jsonError(err.status, err.message);
+    return serverError("admin:orders:update");
+  }
+
   return NextResponse.json({ ok: true, order: updated }, { status: 200 });
 }
 

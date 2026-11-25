@@ -27,8 +27,12 @@ export const dynamic = "force-dynamic";
 export const metadata: Metadata = {
   title: "Millet Jar | Fresh from Farm to Your Family",
   description:
-    "Millet Jar - natural, wholesome millet-based foods. Shop online, pay securely or order on WhatsApp. www.milletjar.in",
+    "Millet Jar - natural, wholesome millet-based foods. Shop our millets or order on WhatsApp. www.milletjar.in",
   metadataBase: new URL("https://www.milletjar.in"),
+  alternates: { canonical: "/" },
+  verification: {
+    google: process.env.NEXT_PUBLIC_GOOGLE_SITE_VERIFICATION || undefined,
+  },
   openGraph: {
     title: "Millet Jar | Fresh from Farm to Your Family",
     description: "Wholesome millet-based foods from farm to your family.",

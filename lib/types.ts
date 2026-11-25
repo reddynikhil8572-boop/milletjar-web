@@ -1,4 +1,4 @@
-export type UserRole = "customer";
+export type UserRole = "customer" | "admin";
 
 export type ProductCategory = "millet" | "mix" | "snack";
 
@@ -48,6 +48,8 @@ export type User = {
   provider: "google" | "dev" | "password";
   /** scrypt hash; only set for email+password accounts. */
   passwordHash?: string;
+  /** Stable Google account id; used to prevent email-only account takeover. */
+  googleSub?: string;
   role: UserRole;
   createdAt: number;
   lastLoginAt: number;
@@ -103,6 +105,8 @@ export type PaymentStatus = "unpaid" | "paid" | "failed";
 export type Order = {
   id: string;
   reference: string;
+  /** Client-generated key used to make retries safe. */
+  requestId?: string;
   userId: string;
   items: OrderItem[];
   subtotal: number;

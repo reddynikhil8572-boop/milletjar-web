@@ -14,6 +14,9 @@ const ERROR_MESSAGES: Record<string, string> = {
   oauth_expired: "The sign-in attempt expired. Please try again.",
   oauth_exchange: "Google could not confirm the sign-in. Please try again.",
   oauth_profile: "We could not read your Google profile. Please try again.",
+  oauth_config: "Google sign-in is misconfigured. Please contact support.",
+  oauth_link_mismatch:
+    "That Google account cannot be linked to this email. Contact support.",
   email_unverified:
     "Please verify the email address on your Google account first.",
 };
@@ -21,11 +24,13 @@ const ERROR_MESSAGES: Record<string, string> = {
 export default function LoginForm({
   googleEnabled,
   devLoginEnabled,
+  signupEnabled,
   next,
   initialError,
 }: {
   googleEnabled: boolean;
   devLoginEnabled: boolean;
+  signupEnabled: boolean;
   next: string;
   initialError?: string;
 }) {
@@ -37,7 +42,7 @@ export default function LoginForm({
   );
   const [mode, setMode] = useState<"signin" | "signup">("signin");
   const [pwName, setPwName] = useState("");
-  const [pwEmail, setPwEmail] = useState("");
+  const [pwAccount, setPwAccount] = useState("");
   const [pwPassword, setPwPassword] = useState("");
   const [pwBusy, setPwBusy] = useState(false);
 
@@ -81,11 +86,11 @@ export default function LoginForm({
           body: JSON.stringify(
             mode === "signup"
               ? {
-                  email: pwEmail,
+                  email: pwAccount,
                   password: pwPassword,
                   name: pwName.trim() || undefined,
                 }
-              : { email: pwEmail, password: pwPassword }
+              : { identifier: pwAccount.trim(), password: pwPassword }
           ),
           credentials: "same-origin",
         }
@@ -177,36 +182,38 @@ export default function LoginForm({
         )}
 
         <div className="mt-5 border-t border-mj-beige pt-5">
-          <div className="flex items-center gap-2">
-            <button
-              type="button"
-              onClick={() => {
-                setMode("signin");
-                setError("");
-              }}
-              className={`mj-press rounded-full px-4 py-1.5 text-sm font-medium ${
-                mode === "signin"
-                  ? "bg-mj-cream text-mj-green"
-                  : "text-mj-brown hover:bg-mj-cream/60"
-              }`}
-            >
-              Sign in
-            </button>
-            <button
-              type="button"
-              onClick={() => {
-                setMode("signup");
-                setError("");
-              }}
-              className={`mj-press rounded-full px-4 py-1.5 text-sm font-medium ${
-                mode === "signup"
-                  ? "bg-mj-cream text-mj-green"
-                  : "text-mj-brown hover:bg-mj-cream/60"
-              }`}
-            >
-              Create account
-            </button>
-          </div>
+          {signupEnabled && (
+            <div className="flex items-center gap-2">
+              <button
+                type="button"
+                onClick={() => {
+                  setMode("signin");
+                  setError("");
+                }}
+                className={`mj-press rounded-full px-4 py-1.5 text-sm font-medium ${
+                  mode === "signin"
+                    ? "bg-mj-cream text-mj-green"
+                    : "text-mj-brown hover:bg-mj-cream/60"
+                }`}
+              >
+                Sign in
+              </button>
+              <button
+                type="button"
+                onClick={() => {
+                  setMode("signup");
+                  setError("");
+                }}
+                className={`mj-press rounded-full px-4 py-1.5 text-sm font-medium ${
+                  mode === "signup"
+                    ? "bg-mj-cream text-mj-green"
+                    : "text-mj-brown hover:bg-mj-cream/60"
+                }`}
+              >
+                Create account
+              </button>
+            </div>
+          )}
 
           <form onSubmit={passwordSubmit} className="mt-4 space-y-3">
             {mode === "signup" && (
@@ -226,15 +233,17 @@ export default function LoginForm({
             )}
             <label className="block">
               <span className="text-xs font-medium uppercase tracking-wide text-mj-brown">
-                Email
+                {mode === "signup" ? "Email" : "Email or account ID"}
               </span>
               <input
-                type="email"
+                type={mode === "signup" ? "email" : "text"}
                 required
-                value={pwEmail}
-                onChange={(event) => setPwEmail(event.target.value)}
-                autoComplete="email"
-                placeholder="you@example.com"
+                value={pwAccount}
+                onChange={(event) => setPwAccount(event.target.value)}
+                autoComplete={mode === "signup" ? "email" : "username"}
+                placeholder={
+                  mode === "signup" ? "you@example.com" : "you@example.com or usr_..."
+                }
                 className="mt-1.5 w-full rounded-xl border border-mj-beige px-3.5 py-2.5 text-sm text-mj-ink placeholder:text-mj-brown/50 focus:outline-none focus:ring-2 focus:ring-mj-green/30"
               />
             </label>
@@ -272,21 +281,30 @@ export default function LoginForm({
             </button>
           </form>
 
-          <p className="mt-3 text-xs leading-relaxed text-mj-brown">
-            {mode === "signup"
-              ? "Already have an account? "
-              : "New to Millet Jar? "}
-            <button
-              type="button"
-              onClick={() => {
-                setMode(mode === "signup" ? "signin" : "signup");
-                setError("");
-              }}
-              className="font-medium text-mj-green hover:underline"
-            >
-              {mode === "signup" ? "Sign in" : "Create an account"}
-            </button>
-          </p>
+          {signupEnabled && (
+            <p className="mt-3 text-xs leading-relaxed text-mj-brown">
+              {mode === "signup"
+                ? "Already have an account? "
+                : "New to Millet Jar? "}
+              <button
+                type="button"
+                onClick={() => {
+                  setMode(mode === "signup" ? "signin" : "signup");
+                  setError("");
+                }}
+                className="font-medium text-mj-green hover:underline"
+              >
+                {mode === "signup" ? "Sign in" : "Create an account"}
+              </button>
+            </p>
+          )}
+          {!signupEnabled && (
+            <p className="mt-3 text-xs leading-relaxed text-mj-brown">
+              Use your email address or account ID (shown on My account) with
+              your password, or continue with Google. New password accounts are
+              created by the administrator.
+            </p>
+          )}
         </div>
 
         {devLoginEnabled && (
@@ -321,8 +339,8 @@ export default function LoginForm({
         )}
 
         <p className="mt-6 text-center text-xs leading-relaxed text-mj-brown">
-          We only store your name, email and order history. No passwords are
-          kept when you sign in with Google.
+          We store your name, email and order history. Password accounts keep a
+          salted hash only; Google sign-in stores no password.
         </p>
       </div>
     </div>

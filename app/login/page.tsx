@@ -3,20 +3,15 @@ import Link from "next/link";
 import { getAuth } from "@/lib/session";
 import { googleConfigured, env } from "@/lib/env";
 import LoginForm from "@/components/login-form";
+import { safeNextPath } from "@/lib/safe-next";
 
 export const dynamic = "force-dynamic";
 
 export const metadata = {
   title: "Sign in | Millet Jar",
-  description: "Sign in to Millet Jar with Google to place and track orders.",
+  description: "Sign in to Millet Jar with your email/ID, password or Google.",
+  robots: { index: false, follow: false },
 };
-
-function safeNext(value: string | undefined): string {
-  if (!value || !value.startsWith("/") || value.startsWith("//")) {
-    return "/account";
-  }
-  return value;
-}
 
 export default async function LoginPage({
   searchParams,
@@ -24,7 +19,7 @@ export default async function LoginPage({
   searchParams: Promise<{ next?: string; error?: string }>;
 }) {
   const params = await searchParams;
-  const next = safeNext(params.next);
+  const next = safeNextPath(params.next);
 
   // Already signed in? Skip the form.
   const auth = await getAuth();
@@ -43,7 +38,7 @@ export default async function LoginPage({
           {[
             "Save your delivery details once",
             "Track every order from your account",
-            "Pay online securely or confirm on WhatsApp",
+            "Confirm payment and delivery on WhatsApp",
           ].map((line) => (
             <li key={line} className="flex items-start gap-2">
               <span className="mt-1 flex h-4 w-4 shrink-0 items-center justify-center rounded-full bg-mj-green/10 text-[10px] text-mj-green">
@@ -59,6 +54,7 @@ export default async function LoginPage({
         <LoginForm
           googleEnabled={googleConfigured()}
           devLoginEnabled={!env.isProd}
+          signupEnabled={!env.isProd}
           next={next}
           initialError={params.error}
         />

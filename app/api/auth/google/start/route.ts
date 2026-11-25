@@ -6,6 +6,7 @@ import { googleConfigured } from "@/lib/env";
 import { guardPublic } from "@/lib/guard";
 import { writeDB } from "@/lib/store";
 import { requestOrigin } from "@/lib/url";
+import { safeNextPath } from "@/lib/safe-next";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -13,7 +14,7 @@ export const dynamic = "force-dynamic";
 const OAUTH_COOKIE = "mj_oauth_state";
 
 export async function GET(req: Request) {
-  const guard = guardPublic(req, { key: "auth:google:start", limit: 20 });
+  const guard = await guardPublic(req, { key: "auth:google:start", limit: 20 });
   if (!guard.ok) return guard.response;
 
   if (!googleConfigured()) {
@@ -27,17 +28,17 @@ export async function GET(req: Request) {
   const origin = requestOrigin(req);
 
   const requestedNext = new URL(req.url).searchParams.get("next") || "";
-  const next =
-    requestedNext.startsWith("/") &&
-    !requestedNext.startsWith("//") &&
-    requestedNext.length <= 300
-      ? requestedNext
-      : "";
+  const next = requestedNext ? safeNextPath(requestedNext) : "";
 
   await writeDB((db) => {
     const now = Date.now();
     db.oauthStates = db.oauthStates.filter((s) => now - s.createdAt < 10 * 60_000);
-    db.oauthStates.push({ state, verifier, createdAt: now, next: next || undefined });
+    db.oauthStates.push({
+      state,
+      verifier,
+      createdAt: now,
+      next: next && next !== "/account" ? next : undefined,
+    });
   });
 
   const store = await cookies();

@@ -8,7 +8,7 @@ export const dynamic = "force-dynamic";
 
 /** Returns the current user plus the CSRF token required for mutations. */
 export async function GET(req: Request) {
-  const guard = guardPublic(req, { key: "auth:me", limit: 120 });
+  const guard = await guardPublic(req, { key: "auth:me", limit: 120 });
   if (!guard.ok) return guard.response;
 
   const auth = await getAuth();

@@ -1,3 +1,5 @@
+import "server-only";
+
 import { cache } from "react";
 import { cookies } from "next/headers";
 import { hashPassword, randomToken, sha256, verifyPassword } from "./crypto";
@@ -126,13 +128,30 @@ export async function createPasswordUser(input: {
   });
 }
 
-/** Verifies email+password. Returns null on any mismatch. */
+/**
+ * Verifies email-or-user-ID + password. Returns null on any mismatch and
+ * never reveals which factor failed.
+ */
 export async function loginWithPassword(input: {
-  email: string;
+  identifier?: string;
+  email?: string;
+  userId?: string;
   password: string;
 }): Promise<User | null> {
-  const email = input.email.trim().toLowerCase();
-  const user = await readDB((db) => db.users.find((u) => u.email === email));
+  const identifier = (
+    input.identifier ||
+    input.email ||
+    input.userId ||
+    ""
+  ).trim();
+  if (!identifier) return null;
+  const email = identifier.includes("@") ? identifier.toLowerCase() : "";
+
+  const user = await readDB((db) =>
+    email
+      ? db.users.find((u) => u.email === email)
+      : db.users.find((u) => u.id === identifier)
+  );
   const stored = user?.passwordHash;
   const ok = await verifyPassword(input.password, stored || DUMMY_HASH);
   if (!user || !stored || !ok) return null;
@@ -144,32 +163,56 @@ export async function loginWithPassword(input: {
   });
 }
 
+/**
+ * Google accounts are matched by stable `sub` first. An email-only match is
+ * only linked when it is a legacy Google account; password accounts are never
+ * silently taken over. Returns null when linking would be unsafe.
+ */
 export async function upsertGoogleUser(input: {
   email: string;
   name: string;
   picture?: string;
-}): Promise<User> {
+  googleSub?: string;
+}): Promise<User | null> {
   const email = input.email.trim().toLowerCase();
+  const sub = input.googleSub?.trim() || "";
+
   return writeDB((db) => {
     const now = Date.now();
-    let user = db.users.find((u) => u.email === email);
+    let user = sub ? db.users.find((u) => u.googleSub === sub) : undefined;
+    if (!user) user = db.users.find((u) => u.email === email);
+
     if (user) {
+      const userId = user.id;
+      if (sub && user.googleSub && user.googleSub !== sub) return null;
+      if (sub && !user.googleSub && user.provider !== "google") return null;
+      if (
+        sub &&
+        !user.googleSub &&
+        db.users.some((u) => u.id !== userId && u.googleSub === sub)
+      ) {
+        return null;
+      }
+      if (sub && !user.googleSub) user.googleSub = sub;
       user.name = input.name || user.name;
       user.picture = input.picture || user.picture;
       user.lastLoginAt = now;
       return user;
     }
-    user = {
+
+    if (sub && db.users.some((u) => u.googleSub === sub)) return null;
+    const created: User = {
       id: `usr_${randomToken(12)}`,
       email,
       name: input.name || email.split("@")[0],
       picture: input.picture,
       provider: "google",
+      googleSub: sub || undefined,
       role: "customer",
       createdAt: now,
       lastLoginAt: now,
     };
-    db.users.push(user);
-    return user;
+    db.users.push(created);
+    return created;
   });
 }

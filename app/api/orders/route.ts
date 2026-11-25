@@ -2,7 +2,7 @@ import { NextResponse } from "next/server";
 import { z } from "zod";
 import { randomToken } from "@/lib/crypto";
 import { guardUser, jsonError, serverError } from "@/lib/guard";
-import { priceCart } from "@/lib/pricing";
+import { CartError, priceAndReserveCart } from "@/lib/pricing";
 import { readDB, writeDB } from "@/lib/store";
 import { whatsappLink } from "@/lib/whatsapp";
 import type { Order } from "@/lib/types";
@@ -21,13 +21,21 @@ const schema = z.object({
     .min(1)
     .max(30),
   customer: z.object({
-    name: z.string().min(2).max(80),
-    phone: z.string().min(10).max(15),
-    address: z.string().min(5).max(300),
-    pincode: z.string().min(4).max(10),
-    city: z.string().max(80).optional(),
-    slot: z.string().max(80).optional(),
+    name: z.string().trim().min(2).max(80),
+    phone: z.string().trim().regex(/^\d{10,15}$/, "Enter a valid phone number"),
+    address: z.string().trim().min(5).max(300),
+    pincode: z.string().trim().regex(/^\d{4,10}$/, "Enter a valid pincode"),
+    city: z.string().trim().max(80).optional(),
+    slot: z.string().trim().max(80).optional(),
   }),
+  /** Sent by the browser so a network retry cannot create a duplicate order. */
+  requestId: z
+    .string()
+    .trim()
+    .min(8)
+    .max(100)
+    .regex(/^[A-Za-z0-9_-]+$/, "Invalid request id")
+    .optional(),
   // WhatsApp is the only order channel. The field remains for old clients.
   method: z.literal("whatsapp").default("whatsapp"),
 });
@@ -37,7 +45,8 @@ function reference(): string {
   const stamp = `${String(now.getFullYear()).slice(-2)}${String(
     now.getMonth() + 1
   ).padStart(2, "0")}${String(now.getDate()).padStart(2, "0")}`;
-  return `MJ${stamp}-${randomToken(3).replace(/[-_]/g, "").slice(0, 5).toUpperCase()}`;
+  const suffix = randomToken(6).replace(/[-_]/g, "").slice(0, 8).toUpperCase();
+  return `MJ${stamp}-${suffix}`;
 }
 
 export async function POST(req: Request) {
@@ -61,33 +70,49 @@ export async function POST(req: Request) {
     return jsonError(400, "Please check the order details and try again");
   }
 
-  // Prices always come from the server catalog, never from the client.
-  const priced = await priceCart(parsed.data.items);
-  if (priced.items.length === 0) {
-    return jsonError(400, "No valid products selected");
-  }
-
   try {
     const now = Date.now();
-    const order: Order = {
-      id: `ord_${randomToken(10)}`,
-      reference: reference(),
-      userId: guard.user.id,
-      items: priced.items,
-      subtotal: priced.subtotal,
-      shipping: priced.shipping,
-      total: priced.total,
-      customer: parsed.data.customer,
-      status: "pending",
-      payment: {
-        method: "whatsapp",
-        status: "unpaid",
-      },
-      createdAt: now,
-      updatedAt: now,
-    };
+    const requestId = parsed.data.requestId || `srv_${randomToken(12)}`;
 
-    await writeDB((db) => {
+    const result = await writeDB((db) => {
+      // A retried request returns the original order instead of reserving
+      // stock a second time.
+      if (parsed.data.requestId) {
+        // providerRef also carries the key so idempotency keeps working on a
+        // database that has not yet run the requestId column migration.
+        const idempotencyKey = `req:${parsed.data.requestId}`;
+        const existing = db.orders.find(
+          (o) =>
+            o.userId === guard.user.id &&
+            (o.requestId === parsed.data.requestId ||
+              o.payment.providerRef === idempotencyKey)
+        );
+        if (existing) return { order: existing, idempotent: true };
+      }
+
+      // Pricing, stock validation and the decrement happen in this snapshot,
+      // so a stale snapshot cannot oversell and a failed write rolls back.
+      const priced = priceAndReserveCart(db, parsed.data.items);
+
+      const order: Order = {
+        id: `ord_${randomToken(10)}`,
+        reference: reference(),
+        requestId,
+        userId: guard.user.id,
+        items: priced.items,
+        subtotal: priced.subtotal,
+        shipping: priced.shipping,
+        total: priced.total,
+        customer: parsed.data.customer,
+        status: "pending",
+        payment: {
+          method: "whatsapp",
+          status: "unpaid",
+          providerRef: `req:${requestId}`,
+        },
+        createdAt: now,
+        updatedAt: now,
+      };
       db.orders.push(order);
       db.audit.push({
         id: `aud_${randomToken(8)}`,
@@ -102,15 +127,15 @@ export async function POST(req: Request) {
       const c = parsed.data.customer;
       const norm = (s: string) => s.toLowerCase().replace(/\s+/g, " ").trim();
       const key = norm(c.address);
-      const existing = db.savedAddresses.find(
+      const existingAddress = db.savedAddresses.find(
         (a) => a.userId === guard.user.id && norm(a.address) === key
       );
-      if (existing) {
-        existing.name = c.name;
-        existing.phone = c.phone;
-        existing.city = c.city;
-        existing.slot = c.slot;
-        existing.createdAt = now;
+      if (existingAddress) {
+        existingAddress.name = c.name;
+        existingAddress.phone = c.phone;
+        existingAddress.city = c.city;
+        existingAddress.slot = c.slot;
+        existingAddress.createdAt = now;
       } else {
         db.savedAddresses.push({
           id: `adr_${randomToken(8)}`,
@@ -132,20 +157,23 @@ export async function POST(req: Request) {
           db.savedAddresses = db.savedAddresses.filter((a) => !drop.has(a.id));
         }
       }
+      return { order, idempotent: false };
     });
-
-    const whatsappUrl = whatsappLink(order);
 
     return NextResponse.json(
       {
         ok: true,
-        order,
-        whatsappUrl,
-        next: `/order/${order.id}`,
+        order: result.order,
+        whatsappUrl: whatsappLink(result.order),
+        next: `/order/${result.order.id}`,
+        idempotent: result.idempotent,
       },
-      { status: 201 }
+      { status: result.idempotent ? 200 : 201 }
     );
-  } catch {
+  } catch (err) {
+    if (err instanceof CartError) {
+      return jsonError(409, err.message, { problems: err.problems });
+    }
     return serverError("orders:create");
   }
 }
