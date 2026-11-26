@@ -122,7 +122,7 @@ export default async function Home() {
                     fill
                     sizes="(max-width: 768px) 48vw, 28vw"
                     className="object-contain"
-                    preload
+                    loading="eager"
                   />
                 </div>
                 <div

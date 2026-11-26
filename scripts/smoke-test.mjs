@@ -105,6 +105,14 @@ for (const path of [
   check(`GET ${path} renders`, res.status === 200, `status ${res.status}`);
 }
 
+// --- promotion ticker ---
+{
+  const { res } = await req(null, "/");
+  const html = await res.text();
+  const copies = (html.match(/mj-ticker__group/g) || []).length;
+  check("promotion ticker has two seamless copies", copies === 2, `${copies} copies`);
+}
+
 // --- error fallback and search-engine discovery ---
 {
   const missing = await req(null, "/this-page-does-not-exist");

@@ -151,7 +151,7 @@ export default function AdminPromotions({ csrf }: { csrf: string }) {
             Scrolling offers bar
           </h2>
           <p className="text-sm text-mj-brown">
-            Messages scroll left to right at the top of every storefront page.
+            Messages scroll right to left at the top of every storefront page.
           </p>
         </div>
         <button
