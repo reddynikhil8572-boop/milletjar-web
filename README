@@ -1,0 +1,253 @@
+# Millet Jar – Farm-Fresh Millet Storefront
+
+**Fresh from Farm to Your Family.**
+
+Millet Jar is a modern, responsive e-commerce web application designed to bring farm-fresh millet products closer to customers through a seamless online shopping experience.
+
+Developed by **Vask Hub**, this project focuses on creating an accessible digital storefront with product discovery, shopping cart management, customer authentication, delivery coordination, and convenient order communication.
+
+## About the Project
+
+Millet Jar aims to simplify the way customers discover and purchase millet-based products.
+
+The platform provides a user-friendly shopping experience across desktop and mobile devices, allowing customers to explore products, manage their carts, review order details, and communicate their orders through WhatsApp.
+
+The application is built with a modern web architecture, emphasizing performance, security, maintainability, and scalability.
+
+## Key Features
+
+### Shopping Experience
+- Modern and responsive storefront.
+- Product browsing and product details.
+- Organized product categories.
+- Smooth navigation and interactive UI.
+- Mobile-first shopping experience.
+
+### Cart Management
+- Add and remove products.
+- Update product quantities.
+- Persistent cart using local storage.
+- Server-side price verification before order processing.
+- Automatic subtotal and total calculations.
+
+### Authentication
+- Google Sign-In integration.
+- OAuth 2.0 with PKCE authentication flow.
+- Secure session management.
+- HTTP-only session cookies.
+
+### Ordering & Delivery
+- WhatsApp-based order communication.
+- Product names, quantities, prices, and order totals included in order messages.
+- Delivery booking workflow.
+- Order confirmation experience.
+- Customer account functionality.
+
+### Security
+- Environment-based configuration.
+- Sensitive credentials isolated from source code.
+- Server-side price validation.
+- Secure authentication sessions.
+- HTTP-only cookies.
+- Production-ready security configurations.
+
+## Technology Stack
+
+| Category | Technology |
+|---|---|
+| Framework | Next.js 16 |
+| Architecture | App Router |
+| Language | TypeScript |
+| Styling | Tailwind CSS v4 |
+| Authentication | Google OAuth 2.0 + PKCE |
+| Session Management | HTTP-only Cookies |
+| Cart Management | Local Storage |
+| Communication | WhatsApp Integration |
+| Version Control | Git & GitHub |
+
+## Project Structure
+
+```text
+millet-jar/
+├── public/
+│   ├── images/
+│   ├── icons/
+│   └── assets/
+│
+├── src/
+│   ├── app/
+│   │   ├── page.tsx
+│   │   ├── products/
+│   │   ├── about/
+│   │   ├── contact/
+│   │   ├── cart/
+│   │   ├── login/
+│   │   ├── delivery/
+│   │   ├── account/
+│   │   └── order-confirmation/
+│   │
+│   ├── components/
+│   ├── lib/
+│   ├── hooks/
+│   ├── types/
+│   └── styles/
+│
+├── .env.example
+├── .gitignore
+├── next.config.ts
+├── package.json
+├── tsconfig.json
+└── README.md
+```
+
+*The structure above is illustrative; adjust it to match the actual repository.*
+
+## Prerequisites
+
+Ensure the following tools are installed:
+
+- Node.js 18.18 or higher (use a version compatible with Next.js 16).
+- npm or another compatible package manager.
+- Git.
+- Google Cloud project with OAuth credentials.
+- Required application configuration.
+
+## Installation & Setup
+
+### 1. Clone the Repository
+
+```bash
+git clone https://github.com/USERNAME/millet-jar.git
+cd millet-jar
+```
+
+### 2. Install Dependencies
+
+```bash
+npm install
+```
+
+### 3. Environment Configuration
+
+Create your local environment file:
+
+```bash
+cp .env.example .env.local
+```
+
+Configure the required environment variables:
+
+```env
+# Application
+NODE_ENV=development
+NEXT_PUBLIC_APP_URL=http://localhost:3000
+
+# Google OAuth
+GOOGLE_CLIENT_ID=your_google_client_id
+GOOGLE_CLIENT_SECRET=your_google_client_secret
+
+# Authentication
+JWT_SECRET=your_secure_random_secret
+
+# Session
+SESSION_SECRET=your_secure_session_secret
+```
+
+Add any additional variables required by your actual implementation.
+
+**Security Notice:** Never commit `.env.local`, OAuth credentials, session secrets, or other sensitive information to GitHub.
+
+### 4. Run the Development Server
+
+```bash
+npm run dev
+```
+
+Open:
+
+```text
+http://localhost:3000
+```
+
+### 5. Build for Production
+
+```bash
+npm run build
+```
+
+Start the production server:
+
+```bash
+npm run start
+```
+
+## Security Practices
+
+Security is considered throughout the application's architecture.
+
+- Sensitive credentials are managed through environment variables.
+- OAuth authentication uses PKCE.
+- Authentication sessions use HTTP-only cookies.
+- Cart totals are verified server-side.
+- Production configurations use secure defaults.
+- CORS should allow only explicitly trusted origins.
+- Dependencies should be regularly audited and updated.
+
+Run dependency checks:
+
+```bash
+npm audit
+```
+
+## Deployment
+
+The application can be deployed on a platform supporting Next.js applications, such as:
+
+- Vercel
+- AWS
+- Other compatible hosting platforms.
+
+Before deployment:
+
+1. Configure production environment variables.
+2. Set up Google OAuth production redirect URLs.
+3. Enable HTTPS.
+4. Verify authentication and session handling.
+5. Test cart pricing and order workflows.
+6. Verify mobile responsiveness.
+7. Test the production build.
+
+## Project Association
+
+**Organization:** Vask Hub  
+**Project:** Millet Jar  
+**Project Category:** E-commerce / Online Storefront  
+**Professional Engagement:** Memorandum of Understanding (MoU)
+
+This project was developed under Vask Hub's professional association as part of its digital product development initiatives.
+
+## Future Enhancements
+
+Potential improvements include:
+
+- Advanced product filtering and search.
+- Customer order history.
+- Enhanced inventory management.
+- Order tracking.
+- Personalized product recommendations.
+- Improved analytics and reporting.
+- Additional payment and delivery integrations where required.
+
+## License & Ownership
+
+The project's ownership, licensing, distribution, and usage rights are governed by the applicable agreements and MoU between the concerned parties.
+
+Unauthorized redistribution or commercial reuse is subject to the agreed terms.
+
+---
+
+**Developed by Vask Hub**
+
+**Millet Jar – Fresh from Farm to Your Family.**
+
+Website: https://milletjar.in
